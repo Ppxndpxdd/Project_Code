@@ -264,7 +264,7 @@ class MaskTool:
         elif event == cv2.EVENT_RBUTTONDOWN:
             if not self.editing:
                 if self.drawing:
-                    self.add_point_to_polygon((x, y))
+                    self.add_point_to_polygon((x, y), img)
                 else:
                     if len(self.current_polygon) > 1:
                         self.save_polygon()
@@ -350,7 +350,7 @@ class MaskTool:
         while True:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
-                self.mask_positions.to_csv('mask_positions.csv', index=False)
+                self.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True)
                 print("Masks and positions have been saved.")
             elif key == ord('u'):
                 if self.undo_stack:
@@ -395,6 +395,6 @@ class MaskTool:
             self.zones[row['zone_id']] = row['points']
 
 # Usage
-video_source = 'traffic2.mp4'
+video_source = 'mask_tool\\test_source\\traffic2.mp4'
 tool = MaskTool(video_source)
 tool.run()
