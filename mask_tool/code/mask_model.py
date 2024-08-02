@@ -407,6 +407,8 @@ class ZoneIntersectionTracker:
         atexit.register(self.save_detection_log)  # Register save function for exit
         self.object_ids = {}  # Track object IDs across frames
         self.tracked_objects = {}  # Store information about tracked objects
+        self.iou_threshold = 0.8  # Adjust as needed
+        self.max_lost_frames = 10  # Adjust as needed
         
     def load_zones_for_frame(self, frame_id):
         self.zones.clear()
@@ -507,19 +509,15 @@ class ZoneIntersectionTracker:
         cv2.destroyAllWindows()
     
     def get_object_id(self, mask):
-        iou_threshold = 0.5
+        # Improved ID assignment using mask similarity (IOU)
         for existing_id, existing_mask in self.object_ids.items():
-            # Convert masks to binary images for accurate IOU calculation
-            mask1_binary = self.mask_to_binary_image(mask)
-            mask2_binary = self.mask_to_binary_image(existing_mask)
-
             # Resize masks to have the same shape before calculating IOU
-            mask1_resized = cv2.resize(mask1_binary, (mask2_binary.shape[1], mask2_binary.shape[0]))
-
-            iou = self.calculate_iou(mask1_resized, mask2_binary)
-            if iou > iou_threshold:
+            resized_mask = cv2.resize(mask.astype(np.float32), (existing_mask.shape[1], existing_mask.shape[0]))
+            iou = self.calculate_iou(resized_mask, existing_mask)
+            if iou > self.iou_threshold:
                 return existing_id
 
+        # No matching object found, assign a new ID
         new_id = self.next_object_id
         self.object_ids[new_id] = mask
         self.next_object_id += 1
@@ -544,11 +542,10 @@ class ZoneIntersectionTracker:
     
     def remove_lost_objects(self, current_frame_id, current_object_ids):
         # Remove objects that haven't been seen for a certain number of frames
-        threshold = 10  # Example threshold: remove objects not seen for 10 frames
         for object_id in list(self.tracked_objects.keys()):
-            if object_id not in current_object_ids and current_frame_id - self.tracked_objects[object_id]['last_seen'] > threshold:
+            if object_id not in current_object_ids and current_frame_id - self.tracked_objects[object_id]['last_seen'] > self.max_lost_frames:
                 del self.tracked_objects[object_id]
-                
+                                
     def save_detection_log(self):
         # Create a list of dictionaries for the DataFrame
         detection_log = []
