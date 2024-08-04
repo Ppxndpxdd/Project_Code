@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 import atexit
+from scipy.optimize import linear_sum_assignment  # For Hungarian Algorithm
 
 class MaskTool:
     def __init__(self, video_source):
@@ -328,7 +329,6 @@ class MaskTool:
             self.redo_stack.clear()
 
     def run(self):
-        frame_to_edit = int(input("Enter the frame number to edit: "))
         self.frame_id = frame_to_edit
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
         ret, self.target_frame = self.cap.read()
@@ -405,11 +405,10 @@ class ZoneIntersectionTracker:
         self.object_ids = {}  # Track object IDs across frames
         self.detection_log = []  # Store detection log
         atexit.register(self.save_detection_log)  # Register save function for exit
-        self.object_ids = {}  # Track object IDs across frames
         self.tracked_objects = {}  # Store information about tracked objects
-        self.iou_threshold = 0.8  # Adjust as needed
+        self.iou_threshold = 0.65  # Adjust as needed
         self.max_lost_frames = 10  # Adjust as needed
-        
+
     def load_zones_for_frame(self, frame_id):
         self.zones.clear()
         frame_data = self.mask_positions[self.mask_positions['frame'] == frame_id]
@@ -427,125 +426,133 @@ class ZoneIntersectionTracker:
             print("Error: Could not open video.")
             return
 
-        # Set frame position for editing
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-
-        # Get the frame for mask definition
         ret, frame = cap.read()
         if not ret:
             print("Error: Could not read the frame.")
             return
 
-        # Use MaskTool to define the mask
         mask_tool = MaskTool(video_path)
         mask_tool.frame_id = frame_to_edit
         mask_tool.target_frame = frame
         mask_tool.run()
 
-        # Load zones after saving
         self.load_zones_for_frame(frame_to_edit)
 
         frame_id = frame_to_edit
+        previous_centroids = {}
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
             results = self.model(frame)
-            
+
             # Draw all user-defined masks
             for zone_id, polygon in self.zones.items():
                 cv2.polylines(frame, [polygon.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
-                cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            
-            current_object_ids = set()  # Keep track of IDs seen in the current frame
-            
+                cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            (0, 255, 0), 2)
+
+            current_centroids = {}
+
             for result in results:
-                masks = result.masks.xy  # Get segmentation masks
+                masks = result.masks.xy
 
                 for mask, conf, class_id in zip(masks, result.boxes.conf.cpu().numpy(), result.boxes.cls.cpu().numpy()):
-                    # Assign unique object ID
-                    object_id = self.get_object_id(mask)
-                    current_object_ids.add(object_id)  # Add ID to the set of seen IDs
-                    
-                    for zone_id, polygon in self.zones.items():
-                        # Use masks directly for intersection check
-                        if self.intersects(mask, polygon):
-                            print(f"Frame {frame_id}: Object {class_id} (ID: {object_id}) with confidence {conf:.2f} intersects with Zone {zone_id}")
-                            self.detection_log.append({
-                                'frame_id': frame_id,
-                                'object_id': object_id,
-                                'class_id': class_id,
-                                'confidence': conf,
-                                'zone_id': zone_id
-                            })
-                            
-                            # Update tracked object information
-                            if object_id in self.tracked_objects:
-                                self.tracked_objects[object_id]['last_seen'] = frame_id
-                            else:
-                                self.tracked_objects[object_id] = {
-                                    'first_seen': frame_id,
-                                    'last_seen': frame_id,
-                                    'class_id': class_id,
-                                    'zone_id': zone_id
-                                }
-                                
-                            # Draw segmentation mask and label
-                            cv2.polylines(frame, [mask.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
-                            label = f"ID: {object_id} Class: {class_id} Conf: {conf:.2f}"
-                            cv2.putText(frame, label, tuple(mask[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    centroid = self.calculate_centroid(mask)
+                    current_centroids[centroid] = (mask, conf, class_id)
 
-            # Remove objects that haven't been seen in a while (optional)
-            self.remove_lost_objects(frame_id, current_object_ids)
-            
+            # Hungarian Algorithm for ID assignment
+            assignments = {}  # Define assignments outside the conditional block
+            if previous_centroids and current_centroids:
+                cost_matrix = self.create_cost_matrix(previous_centroids, current_centroids)
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+                for i, j in zip(row_ind, col_ind):
+                    prev_centroid = list(previous_centroids.keys())[i]
+                    curr_centroid = list(current_centroids.keys())[j]
+                    mask, conf, class_id = current_centroids[curr_centroid]
+
+                    object_id = previous_centroids[prev_centroid][0]
+                    current_centroids[curr_centroid] = (object_id, mask, conf, class_id)
+                    assignments[object_id] = curr_centroid
+
+            # Assign new IDs to unassigned objects in the current frame
+            for curr_centroid, values in [(c, v) for c, v in current_centroids.items()]:  # Iterate over a copy
+                if curr_centroid not in assignments.values():
+                    object_id = self.next_object_id
+                    self.next_object_id += 1
+                    current_centroids[curr_centroid] = (object_id, mask, conf, class_id)
+
+            # Update tracked objects and object IDs
+            self.update_tracked_objects(current_centroids, frame_id)
+            self.object_ids = {obj_id: mask for obj_id, mask, _, _ in current_centroids.values()}
+
+            # Process detected objects
+            for centroid, (object_id, mask, conf, class_id) in current_centroids.items():
+                for zone_id, polygon in self.zones.items():
+                    if self.intersects(mask, polygon):
+                        print(f"Frame {frame_id}: Object {class_id} (ID: {object_id}) "
+                              f"with confidence {conf:.2f} intersects with Zone {zone_id}")
+                        self.detection_log.append({
+                            'frame_id': frame_id,
+                            'object_id': object_id,
+                            'class_id': class_id,
+                            'confidence': conf,
+                            'zone_id': zone_id
+                        })
+
+                cv2.polylines(frame, [mask.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+                label = f"ID: {object_id} Class: {class_id} Conf: {conf:.2f}"
+                cv2.putText(frame, label, tuple(mask[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            (0, 255, 0), 2)
+
             cv2.imshow('Zone Intersections', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+            previous_centroids = {obj_id: centroid for centroid, (obj_id, _, _, _) in current_centroids.items()}
             frame_id += 1
 
         cap.release()
         cv2.destroyAllWindows()
-    
-    def get_object_id(self, mask):
-        # Improved ID assignment using mask similarity (IOU)
-        for existing_id, existing_mask in self.object_ids.items():
-            # Resize masks to have the same shape before calculating IOU
-            resized_mask = cv2.resize(mask.astype(np.float32), (existing_mask.shape[1], existing_mask.shape[0]))
-            iou = self.calculate_iou(resized_mask, existing_mask)
-            if iou > self.iou_threshold:
-                return existing_id
 
-        # No matching object found, assign a new ID
-        new_id = self.next_object_id
-        self.object_ids[new_id] = mask
-        self.next_object_id += 1
-        return new_id
+    def calculate_centroid(self, mask):
+        M = cv2.moments(mask.astype(np.int32))
+        cx = int(M['m10'] / M['m00'])
+        cy = int(M['m01'] / M['m00'])
+        return (cx, cy)
 
-    def mask_to_binary_image(self, mask):
-        # Create a blank binary image
-        binary_image = np.zeros((np.max(mask[:, 1]).astype(int) + 1, np.max(mask[:, 0]).astype(int) + 1), dtype=np.uint8)
+    def create_cost_matrix(self, previous_centroids, current_centroids):
+        cost_matrix = np.zeros((len(previous_centroids), len(current_centroids)))
+        for i, (prev_obj_id, prev_centroid) in enumerate(previous_centroids.items()):
+            for j, (curr_centroid, (_, _, _)) in enumerate(current_centroids.items()):
+                distance = np.linalg.norm(np.array(prev_centroid) - np.array(curr_centroid))
+                cost_matrix[i, j] = distance
+        return cost_matrix
 
-        # Fill the polygon defined by the mask
-        cv2.fillPoly(binary_image, [mask.astype(np.int32)], 255)
+    def update_tracked_objects(self, current_centroids, frame_id):
+        for centroid, values in current_centroids.items():
+            # Handle cases with and without object_id
+            if len(values) == 4:  # Object ID already assigned by Hungarian Algorithm
+                object_id, mask, conf, class_id = values
+            else:  # New object, assign a new ID
+                mask, conf, class_id = values
+                object_id = self.next_object_id
+                self.next_object_id += 1
 
-        return binary_image
-    
-    def calculate_iou(self, mask1, mask2):
-        # Calculate Intersection over Union (IOU) between two binary masks
-        intersection = np.logical_and(mask1, mask2).sum()
-        union = np.logical_or(mask1, mask2).sum()
-        if union == 0:
-            return 0
-        return intersection / union
-    
-    def remove_lost_objects(self, current_frame_id, current_object_ids):
-        # Remove objects that haven't been seen for a certain number of frames
-        for object_id in list(self.tracked_objects.keys()):
-            if object_id not in current_object_ids and current_frame_id - self.tracked_objects[object_id]['last_seen'] > self.max_lost_frames:
-                del self.tracked_objects[object_id]
-                                
+            if object_id in self.tracked_objects:
+                self.tracked_objects[object_id]['last_seen'] = frame_id
+            else:
+                self.tracked_objects[object_id] = {
+                    'first_seen': frame_id,
+                    'last_seen': frame_id,
+                    'class_id': class_id,
+                    'zone_id': None 
+                }
+                
     def save_detection_log(self):
         # Create a list of dictionaries for the DataFrame
         detection_log = []
