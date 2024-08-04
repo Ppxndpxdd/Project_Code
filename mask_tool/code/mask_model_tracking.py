@@ -422,6 +422,8 @@ class ZoneIntersectionTracker:
             print("Error: Could not open video.")
             return
 
+        fps = cap.get(cv2.CAP_PROP_FPS)  # Get frames per second
+        
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
         ret, frame = cap.read()
         if not ret:
@@ -441,8 +443,11 @@ class ZoneIntersectionTracker:
             ret, frame = cap.read()
             if not ret:
                 break
+            
+            # Get timestamp of the current frame in seconds
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
 
-            results = self.model.track(frame, iou=0.8 , stream=True, tracker=self.tracker_config)
+            results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config)
 
             # Draw all user-defined masks (green)
             for zone_id, polygon in self.zones.items():
@@ -502,7 +507,9 @@ class ZoneIntersectionTracker:
                                     'object_id': object_id,
                                     'class_id': class_id,
                                     'confidence': conf,
-                                    'zone_id': zone_id
+                                    'zone_id': zone_id,
+                                    'first_seen': timestamp,  # Store timestamp instead of frame_id
+                                    'last_seen': timestamp   # Store timestamp instead of frame_id
                                 })
 
             cv2.imshow('Zone Intersections', frame)
@@ -522,13 +529,17 @@ class ZoneIntersectionTracker:
             for zone_id in data['zone_entries']:
                 detection_log.append({
                     'object_id': object_id,
-                    'first_seen': data['first_seen'],
-                    'last_seen': data['last_seen'],
+                    'first_seen': data['first_seen'],  # Now gets timestamp from tracked_objects
+                    'last_seen': data['last_seen'],   # Now gets timestamp from tracked_objects
                     'class_id': data['class_id'],
                     'zone_id': zone_id
                 })
 
         df = pd.DataFrame(detection_log)
+        
+        # Calculate time duration for each object in the zone
+        df['duration'] = df['last_seen'] - df['first_seen']
+        
         df.to_csv('detection_log.csv', index=False)
         print("Detection log saved to detection_log.csv")
 
