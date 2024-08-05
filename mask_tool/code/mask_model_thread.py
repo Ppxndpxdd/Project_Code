@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 from ultralytics import YOLO
 import atexit
+import threading
 
 class MaskTool:
-    def __init__(self, video_source):
+    def __init__(self, video_source, shared_zones, zone_lock, pause_event):
         self.cap = cv2.VideoCapture(video_source)
         self.mask_positions = pd.DataFrame(columns=['frame', 'zone_id', 'points'])
         self.drawing = False
@@ -22,6 +23,9 @@ class MaskTool:
         self.point_radius = 5
         self.line_threshold = 10
         self.selection_threshold = 10
+        self.shared_zones = shared_zones
+        self.zone_lock = zone_lock
+        self.pause_event = pause_event
 
     def draw_polygon(self, img, polygon, color=(0, 255, 0)):
         if len(polygon) > 0:
@@ -59,13 +63,9 @@ class MaskTool:
 
     def draw_axes(self, img):
         height, width = img.shape[:2]
-
-        # Draw x-axis (start at bottom-left)
-        cv2.line(img, (0, height - 1), (width, height - 1), (255, 0, 0), 2)  # Blue line
+        cv2.line(img, (0, height - 1), (width, height - 1), (255, 0, 0), 2)
         cv2.putText(img, 'X', (width - 20, height - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
-        # Draw y-axis (start at bottom-left)
-        cv2.line(img, (0, 0), (0, height), (0, 255, 0), 2)  # Green line
+        cv2.line(img, (0, 0), (0, height), (0, 255, 0), 2)
         cv2.putText(img, 'Y', (10, height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     def is_within_bounds(self, point, img):
@@ -288,7 +288,9 @@ class MaskTool:
                 print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
                 
         self.draw_polygon(img, self.current_polygon)
-        cv2.imshow('Target Frame', img) 
+        with self.zone_lock:
+            self.shared_frame[:] = img[:]
+            cv2.imshow('Zone Intersections', self.shared_frame)
         
     def is_point_near_polygon_point(self, point, polygon, threshold=10):
         for p in polygon:
@@ -326,29 +328,28 @@ class MaskTool:
                 self.mask_positions = pd.concat([self.mask_positions, new_entry], ignore_index=True)
             self.undo_stack.append((self.zones.copy(), self.mask_positions.copy()))
             self.redo_stack.clear()
+            
+        # Acquire lock before updating shared zones
+        with self.zone_lock:
+            self.shared_zones.update(self.zones)
 
-    def run(self):
+    def run(self, frame, frame_to_edit):
         self.frame_id = frame_to_edit
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-        ret, self.target_frame = self.cap.read()
-        if not ret:
-            print("Error: Could not read the frame.")
-            return
+        self.target_frame = frame.copy()
+        self.shared_frame = frame
 
-        # Load existing polygons for the current frame
-        self.load_polygons_for_frame(self.frame_id)
-
-        cv2.imshow('Target Frame', self.target_frame)
-        cv2.setMouseCallback('Target Frame', self.draw_mask)
+        cv2.imshow('Zone Intersections', self.shared_frame)
+        cv2.setMouseCallback('Zone Intersections', self.draw_mask)
 
         print("Edit the mask and use the following commands:")
         print(" - 's' to save the mask")
         print(" - 'u' to undo")
         print(" - 'r' to redo")
         print(" - 'e' to toggle editing mode")
+        print(" - 'p' to pause/resume detection")
         print(" - 'q' to quit")
 
-        while True:
+        while not self.pause_event.is_set():  # Exit loop when pause_event is set
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
                 self.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True)
@@ -376,20 +377,21 @@ class MaskTool:
                     self.drawing = False
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
-            elif key == 27 or key == ord('q'):  # Quit
-                # *** Save before quitting ***
+            elif key == 27 or key == ord('q'):
                 self.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True)
                 print("Masks and positions have been saved.")
-                break
+                cv2.destroyAllWindows()
+                return  # Exit the run method
 
-            # Redraw after each action to reflect changes
+            # Redraw
             img = self.target_frame.copy()
             self.draw_zone_ids(img)
             self.draw_instructions(img)
-            self.draw_axes(self.target_frame)
-            cv2.imshow('Target Frame', img)
-        cv2.destroyAllWindows()
-        self.cap.release()
+            self.draw_axes(img)
+
+            with self.zone_lock:
+                self.shared_frame[:] = img[:]
+                cv2.imshow('Zone Intersections', self.shared_frame) 
 
     def load_polygons_for_frame(self, frame_id):
         """Loads polygons from the DataFrame for the specified frame."""
@@ -407,6 +409,8 @@ class ZoneIntersectionTracker:
         atexit.register(self.save_detection_log)  # Register save function for exit
         self.tracked_objects = {}  # Add tracked_objects to handle tracking data
         self.tracker_config = tracker_config  # Use ByteTrack
+        self.shared_zones = {}  # Shared zone data dictionary
+        self.zone_lock = threading.Lock()  # Lock for zone data access
 
     def load_zones_for_frame(self, frame_id):
         self.zones.clear()
@@ -425,34 +429,37 @@ class ZoneIntersectionTracker:
             print("Error: Could not open video.")
             return
 
-        fps = cap.get(cv2.CAP_PROP_FPS)  # Get frames per second
-        
+        fps = cap.get(cv2.CAP_PROP_FPS)
+
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-        ret, frame = cap.read()
+        ret, self.shared_frame = cap.read()  # Shared frame for display
         if not ret:
             print("Error: Could not read the frame.")
             return
 
-        mask_tool = MaskTool(video_path)
-        mask_tool.frame_id = frame_to_edit
-        mask_tool.target_frame = frame
-        mask_tool.run()
+        self.pause_event = threading.Event()
+        mask_tool = MaskTool(video_path, self.shared_zones, self.zone_lock, self.pause_event)
 
-        # *** Auto-save the mask data ***
-        mask_tool.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True) 
-        print("Masks and positions have been saved automatically.")
-        
-        self.load_zones_for_frame(frame_to_edit)
+        cv2.namedWindow('Zone Intersections', cv2.WINDOW_NORMAL)
+
+        # Start with MaskTool
+        mask_tool.run(self.shared_frame, frame_to_edit)
 
         frame_id = frame_to_edit
 
         while cap.isOpened():
-            ret, frame = cap.read()
+            # Read into a temporary frame
+            ret, temp_frame = cap.read()
             if not ret:
                 break
-            
-            # Get timestamp of the current frame in seconds
+
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
+
+            # Acquire lock, copy shared_frame for processing, and release lock
+            with self.zone_lock:
+                frame = self.shared_frame.copy()
+
+
             results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config)
             self.load_zones_for_frame(frame_to_edit)
 
@@ -463,16 +470,22 @@ class ZoneIntersectionTracker:
                 cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
+            intersection_occurred_in_frame = False
+
             for result in results:
                 boxes = result.boxes
                 masks = result.masks.xy
 
                 for i, (mask, conf, class_id) in enumerate(zip(masks, boxes.conf.cpu().numpy(), boxes.cls.cpu().numpy())):
                     intersection_detected = False
+                    intersected_zone_id = None
+
                     for zone_id, polygon in self.zones.items():
                         if self.intersects(mask, polygon):
                             intersection_detected = True
+                            intersected_zone_id = zone_id
                             print(f"Intersection detected! Zone: {zone_id}")
+                            break  
 
                     # Draw segmentation mask (red if intersects, green otherwise)
                     mask_color = (0, 0, 255) if intersection_detected else (0, 255, 0)
@@ -482,44 +495,49 @@ class ZoneIntersectionTracker:
                     # Draw object ID and label if tracked
                     if boxes.id is not None:
                         object_id = boxes.id[i].item()
-                        object_id = int(object_id)  # Convert object_id to integer
+                        object_id = int(object_id)
 
                         label = f"ID: {object_id} Class: {class_id} Conf: {conf:.2f}"
-
-                        # Calculate the top-left corner of the bounding box
                         x1, y1, x2, y2 = boxes.xyxy[i].cpu().numpy().astype(int)
-
-                        # Use the top-left corner as the text origin
                         org = (x1, y1)
-
                         cv2.putText(frame, label, org, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                        # Update tracked_objects
+                        # Ensure 'first_seen' and 'last_seen' exist for all tracked objects
                         if object_id not in self.tracked_objects:
                             self.tracked_objects[object_id] = {
-                                'first_seen': frame_id,
-                                'last_seen': frame_id,
+                                'first_seen': timestamp,
+                                'last_seen': timestamp,
                                 'class_id': class_id,
                                 'zone_entries': []
                             }
-                        else:
-                            self.tracked_objects[object_id]['last_seen'] = frame_id
+                        
+                        # Update 'last_seen' for the current frame
+                        self.tracked_objects[object_id]['last_seen'] = timestamp
 
-                        # Log intersection and update tracked_objects
-                        if intersection_detected:
-                            if zone_id not in self.tracked_objects[object_id]['zone_entries']:
-                                self.tracked_objects[object_id]['zone_entries'].append(zone_id)
+                        # Log intersection if it occurred
+                        if intersection_detected and intersected_zone_id is not None:
+                            intersection_occurred_in_frame = True
+                            if intersected_zone_id not in self.tracked_objects[object_id]['zone_entries']:
+                                self.tracked_objects[object_id]['zone_entries'].append(intersected_zone_id)
                                 self.detection_log.append({
                                     'frame_id': frame_id,
                                     'object_id': object_id,
                                     'class_id': class_id,
                                     'confidence': conf,
-                                    'zone_id': zone_id,
-                                    'first_seen': timestamp,  # Store timestamp instead of frame_id
-                                    'last_seen': timestamp   # Store timestamp instead of frame_id
+                                    'zone_id': intersected_zone_id,
+                                    'first_seen': self.tracked_objects[object_id]['first_seen'],
+                                    'last_seen': self.tracked_objects[object_id]['last_seen']
                                 })
 
-            cv2.imshow('Zone Intersections', frame)
+            # Update the shared frame for display
+            with self.zone_lock:
+                self.shared_frame[:] = frame[:]
+            cv2.imshow('Zone Intersections', self.shared_frame)
+
+            # Save log if no intersection occurred in the frame
+            if not intersection_occurred_in_frame:
+                self.save_detection_log()
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
@@ -543,9 +561,10 @@ class ZoneIntersectionTracker:
 
         df = pd.DataFrame(detection_log)
         
-        # Calculate time duration for each object in the zone
-        df['duration'] = df['last_seen'] - df['first_seen']
-        
+        # Calculate time duration only if the DataFrame is not empty
+        if not df.empty:
+            df['duration'] = df['last_seen'] - df['first_seen']
+
         df.to_csv('detection_log.csv', index=False)
         print("Detection log saved to detection_log.csv")
 
