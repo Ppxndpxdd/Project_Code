@@ -1,0 +1,67 @@
+{
+    "Biochemistry and Cell Biology": [
+        "Introduction to Biology",
+        "The Chemistry of Life",
+        "Cell Structure and Function",
+        "Membrane Structure and Function",
+        "Energy, Enzyme, and Metabolism",
+        "Cellular Respiration",
+        "Photosynthesis"
+    ],
+    "Animal Structure and Function": [
+        "Animal Tissues and Homeostasis",
+        "Osmoregulation and Excretion",
+        "Animal Digestion",
+        "Animal Circulation",
+        "Immune System",
+        "Gas Exchange",
+        "Nervous System and Sense Organs",
+        "Hormones and Endocrine System",
+        "Animal Movement",
+        "Animal Reproduction and Development"
+    ],
+    "Plant Structure and Function": [
+        "Structure and Function of Flowering Plants",
+        "Plant Water Transport and Phloem Translocation",
+        "Flowering Plant Reproduction and Development",
+        "Plant Response and Hormones"
+    ],
+    "Cell Division and Principles of Genetics": [
+        "Mitosis and Meiosis",
+        "Principles of Inheritances",
+        "Principles of Molecular Genetics",
+        "Genetics Engineering and DNA Technology"
+    ],
+    "Evolution": [
+        "Evolution",
+        "Development of Evolutionary Thoughts",
+        "Natural Selection",
+        "Evidences of Evolution",
+        "Introduction to Population Genetics",
+        "Microevolution",
+        "Speciation and Macroevolution",
+        "Human Evolution"
+    ],
+    "Biodiversity": [
+        "Principles of Taxonomy and Biodiversity",
+        "Introduction to Taxonomy",
+        "Kingdom and Domain of Life",
+        "Prokaryotes",
+        "Protists",
+        "Plants",
+        "Kingdom Fungi",
+        "Kingdom Animalia"
+    ],
+    "Animal Behavior and Principles of Ecology": [
+        "Animal Behavior",
+        "Types of Behaviors",
+        "Evolution of Behaviors",
+        "Animal Communication",
+        "Social Behavior",
+        "Principles of Ecology",
+        "Organismal Ecology",
+        "Population Ecology",
+        "Community Ecology",
+        "Ecosystem Ecology"
+    ]
+}

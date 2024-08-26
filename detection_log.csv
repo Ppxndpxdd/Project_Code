@@ -1,1 +1,3 @@
-
+object_id,first_seen,last_seen,class_id,zone_id,duration
+1,1,63,2.0,1,62
+7,246,256,2.0,1,10

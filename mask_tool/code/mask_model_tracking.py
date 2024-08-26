@@ -121,7 +121,7 @@ class MaskTool:
             # Check distance from point to closest point 
             dist = np.linalg.norm(np.array(point) - np.array(closest_point))
 
-            return dist < threshold, closest_point
+            return dist <   threshold, closest_point
 
         def insert_point_between_segments(point):
             """Inserts a point into the active polygon if near a segment."""
