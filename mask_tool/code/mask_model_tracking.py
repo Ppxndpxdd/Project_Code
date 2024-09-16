@@ -5,23 +5,33 @@ from ultralytics import YOLO
 import atexit
 
 class MaskTool:
-    def __init__(self, video_source):
+    def __init__(self, video_source, frame_to_edit):
         self.cap = cv2.VideoCapture(video_source)
         self.mask_positions = pd.DataFrame(columns=['frame', 'zone_id', 'points'])
         self.drawing = False
         self.editing = False
         self.current_polygon = []
         self.zone_id = 1
-        self.frame_id = 0
+        self.frame_id = frame_to_edit  # Initialize with the selected frame
         self.dragging_point = False
         self.target_frame = None
-        self.zones = {}  # Store polygons for current frame
+        self.zones = {}
         self.undo_stack = []
         self.redo_stack = []
         self.highlight_radius = 10
         self.point_radius = 5
         self.line_threshold = 10
         self.selection_threshold = 10
+
+        # Load existing polygons for the current frame (if any)
+        self.load_polygons_for_frame(self.frame_id) 
+
+        # Set the video capture to the selected frame
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_id)
+        ret, self.target_frame = self.cap.read()
+        if not ret:
+            print("Error: Could not read the frame.")
+            return
 
     def draw_polygon(self, img, polygon, color=(0, 255, 0)):
         if len(polygon) > 0:
@@ -328,16 +338,6 @@ class MaskTool:
             self.redo_stack.clear()
 
     def run(self):
-        self.frame_id = frame_to_edit
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-        ret, self.target_frame = self.cap.read()
-        if not ret:
-            print("Error: Could not read the frame.")
-            return
-
-        # Load existing polygons for the current frame
-        self.load_polygons_for_frame(self.frame_id)
-
         cv2.imshow('Target Frame', self.target_frame)
         cv2.setMouseCallback('Target Frame', self.draw_mask)
 
@@ -346,7 +346,7 @@ class MaskTool:
         print(" - 'u' to undo")
         print(" - 'r' to redo")
         print(" - 'e' to toggle editing mode")
-        print(" - 'q' to quit")
+        print(" - 'q' to start detection") # Changed message
 
         while True:
             key = cv2.waitKey(1) & 0xFF
@@ -376,7 +376,7 @@ class MaskTool:
                     self.drawing = False
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
-            elif key == 27 or key == ord('q'):  # Quit
+            elif key == 27 or key == ord('q'):  # Start detection when 'q' is pressed
                 break
 
             # Redraw after each action to reflect changes
@@ -387,6 +387,7 @@ class MaskTool:
             cv2.imshow('Target Frame', img)
         cv2.destroyAllWindows()
         self.cap.release()
+        return self.mask_positions  # Return the mask positions DataFrame
 
     def load_polygons_for_frame(self, frame_id):
         """Loads polygons from the DataFrame for the specified frame."""
@@ -398,16 +399,16 @@ class MaskTool:
 class ZoneIntersectionTracker:
     def __init__(self, model_path, mask_csv_path, tracker_config="bytetrack.yaml"):
         self.model = YOLO(model_path)
-        self.mask_positions = pd.read_csv(mask_csv_path)
+        self.mask_positions = pd.read_csv(mask_csv_path)  # Load mask positions here
         self.zones = {}
-        self.detection_log = []  # Store detection log
-        atexit.register(self.save_detection_log)  # Register save function for exit
-        self.tracked_objects = {}  # Add tracked_objects to handle tracking data
-        self.tracker_config = tracker_config  # Use ByteTrack
+        self.detection_log = []
+        atexit.register(self.save_detection_log)
+        self.tracked_objects = {}
+        self.tracker_config = tracker_config
 
-    def load_zones_for_frame(self, frame_id):
+    def load_zones_for_frame(self, frame_id):  # Remove mask_positions argument
         self.zones.clear()
-        frame_data = self.mask_positions[self.mask_positions['frame'] == frame_id]
+        frame_data = self.mask_positions[self.mask_positions['frame'] == frame_to_edit]  # Always load from edited frame
         for _, row in frame_data.iterrows():
             self.zones[row['zone_id']] = np.array(eval(row['points']))
 
@@ -430,17 +431,6 @@ class ZoneIntersectionTracker:
             print("Error: Could not read the frame.")
             return
 
-        mask_tool = MaskTool(video_path)
-        mask_tool.frame_id = frame_to_edit
-        mask_tool.target_frame = frame
-        mask_tool.run()
-
-        # *** Auto-save the mask data ***
-        mask_tool.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True) 
-        print("Masks and positions have been saved automatically.")
-        
-        self.load_zones_for_frame(frame_to_edit)
-
         frame_id = frame_to_edit
 
         while cap.isOpened():
@@ -448,10 +438,12 @@ class ZoneIntersectionTracker:
             if not ret:
                 break
             
-            # Get timestamp of the current frame in seconds
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
+
+            # Load zones for the current frame
+            self.load_zones_for_frame(frame_id) 
+
             results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config)
-            self.load_zones_for_frame(frame_to_edit)
 
             # Draw all user-defined masks (green)
             for zone_id, polygon in self.zones.items():
@@ -459,7 +451,7 @@ class ZoneIntersectionTracker:
                               color=(0, 255, 0), thickness=2)
                 cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
+                
             for result in results:
                 boxes = result.boxes
                 masks = result.masks.xy
@@ -502,19 +494,22 @@ class ZoneIntersectionTracker:
                         else:
                             self.tracked_objects[object_id]['last_seen'] = frame_id
 
-                        # Log intersection and update tracked_objects
-                        if intersection_detected:
-                            if zone_id not in self.tracked_objects[object_id]['zone_entries']:
-                                self.tracked_objects[object_id]['zone_entries'].append(zone_id)
-                                self.detection_log.append({
-                                    'frame_id': frame_id,
-                                    'object_id': object_id,
-                                    'class_id': class_id,
-                                    'confidence': conf,
-                                    'zone_id': zone_id,
-                                    'first_seen': timestamp,  # Store timestamp instead of frame_id
-                                    'last_seen': timestamp   # Store timestamp instead of frame_id
-                                })
+            # Log intersection and update tracked_objects (using timestamps)
+            if intersection_detected:
+                if zone_id not in self.tracked_objects[object_id]['zone_entries']:
+                    self.tracked_objects[object_id]['zone_entries'].append(zone_id)
+                    self.detection_log.append({
+                        'frame_id': frame_id,
+                        'object_id': object_id,
+                        'class_id': class_id,
+                        'confidence': conf,
+                        'zone_id': zone_id,
+                        'first_seen': timestamp,  # Store timestamp
+                        'last_seen': timestamp   # Store timestamp
+                    })
+
+                    # Update and save the detection log instantly
+                    self.save_detection_log() 
 
             cv2.imshow('Zone Intersections', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -538,7 +533,7 @@ class ZoneIntersectionTracker:
                     'zone_id': zone_id
                 })
 
-        df = pd.DataFrame(detection_log)
+        df = pd.DataFrame(self.detection_log)
         
         # Calculate time duration for each object in the zone
         df['duration'] = df['last_seen'] - df['first_seen']
@@ -550,9 +545,16 @@ class ZoneIntersectionTracker:
 if __name__ == "__main__":
     video_source = 'mask_tool\\test_source\\traffic2.mp4'
     model_path = 'mask_tool\\YoLo\\model\\yolov8n-seg.onnx'
-    mask_csv_path = 'mask_tool\\result\\mask_positions.csv'
     frame_to_edit = int(input("Enter the frame number to edit: "))
 
-    # Specify the ByteTrack configuration when creating the tracker object
+    # 1. Run MaskTool to define zones on the selected frame
+    mask_tool = MaskTool(video_source, frame_to_edit)
+    mask_positions = mask_tool.run()
+
+    # 2. Save the DataFrame to a CSV file
+    mask_csv_path = 'mask_tool\\result\\mask_positions.csv'
+    mask_positions.to_csv(mask_csv_path, index=True)
+
+    # 3. Initialize ZoneIntersectionTracker with the CSV file path
     tracker = ZoneIntersectionTracker(model_path, mask_csv_path, tracker_config="ByteTrack.yaml")
     tracker.track_intersections(video_source, frame_to_edit)
