@@ -377,9 +377,6 @@ class MaskTool:
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
             elif key == 27 or key == ord('q'):  # Quit
-                # *** Save before quitting ***
-                self.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True)
-                print("Masks and positions have been saved.")
                 break
 
             # Redraw after each action to reflect changes
