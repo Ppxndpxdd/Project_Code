@@ -72,7 +72,13 @@ class MaskTool:
 
         # Draw x-axis (start at bottom-left)
         cv2.line(img, (0, height - 1), (width, height - 1), (255, 0, 0), 2)  # Blue line
+
+        # Draw x-axis (start at bottom-left)
+        cv2.line(img, (0, height - 1), (width, height - 1), (255, 0, 0), 2)  # Blue line
         cv2.putText(img, 'X', (width - 20, height - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+
+        # Draw y-axis (start at bottom-left)
+        cv2.line(img, (0, 0), (0, height), (0, 255, 0), 2)  # Green line
 
         # Draw y-axis (start at bottom-left)
         cv2.line(img, (0, 0), (0, height), (0, 255, 0), 2)  # Green line
@@ -102,7 +108,7 @@ class MaskTool:
                 print("Polygon too small to close or point too close to start")
         else:
             self.current_polygon.append(point)
-    
+
     def draw_mask(self, event, x, y, flags, param):
         img = self.target_frame.copy()
 
@@ -118,7 +124,7 @@ class MaskTool:
             line_len = np.linalg.norm(line_vec)
 
             # Project point onto the line 
-            proj = np.dot(point_vec, line_vec) / line_len**2 
+            proj = np.dot(point_vec, line_vec) / line_len ** 2
 
             # Calculate closest point on the line segment
             if proj < 0:
@@ -219,60 +225,28 @@ class MaskTool:
                             self.selected_point_index = self.find_closest_point_index(self.current_polygon, (x, y))
                             self.dragging_point = True
                             self.drawing = False
-
-                    # If clicked near a vertex (and not already dragging), duplicate the vertex
-                    if self.zone_id is not None and not self.dragging_point:
-                        polygon = self.zones[self.zone_id]
-                        for i, point in enumerate(polygon):
-                            if np.linalg.norm(np.array(point) - np.array((x, y))) < self.selection_threshold:
-                                self.current_polygon = list(polygon)
-                                self.current_polygon.insert(i, point) # Insert duplicate at the same index
-                                self.zones[self.zone_id] = self.current_polygon
-                                self.selected_point_index = i
-                                self.dragging_point = True
-                                self.drawing = False
-                                break
-
-            else:  # Not in editing mode
-                if not self.drawing:
-                    self.current_polygon = []  # Clear the polygon when starting a new one
-
-                if self.drawing:
-                    self.add_point_to_polygon((x, y), img)  # Call using self.
-                else:
-                    insert_point_between_segments((x, y))
-                    self.current_polygon.append((x, y))
-                    self.drawing = True
-
+            else:
+                self.drawing = True
+                self.add_point_to_polygon((x, y), img)
         elif event == cv2.EVENT_MOUSEMOVE:
-            self.draw_zone_ids(img)
-            self.draw_instructions(img)
-            self.draw_polygon(img, self.current_polygon)
-            self.draw_axes(img)
-
-
-            if self.dragging_point and self.selected_point_index != -1 and self.zone_id is not None:
+            if self.dragging_point and self.selected_point_index != -1:
                 self.current_polygon[self.selected_point_index] = (x, y)
-                self.zones[self.zone_id] = self.current_polygon  # Update the correct zone
+                self.zones[self.zone_id] = self.current_polygon
                 self.draw_polygon(img, self.current_polygon)
             elif self.drawing:
-                temp_polygon = self.current_polygon + [(x, y)]
+                temp_polygon = self.current_polygon.copy()
+                temp_polygon.append((x, y))
                 self.draw_polygon(img, temp_polygon)
-            else:
-                highlight_color = (0, 0, 255)
-                highlight_point = select_nearest_point((x, y))
-                if highlight_point != -1:
-                    cv2.circle(img, self.ensure_point_format(self.current_polygon[highlight_point]), 7, highlight_color, -1)
-
-            self.draw_polygon(img, self.current_polygon)
-            cv2.imshow('Target Frame', img)
-
         elif event == cv2.EVENT_LBUTTONUP:
             if self.dragging_point:
                 self.dragging_point = False
+                self.drawing = False
                 self.save_polygon()
-                self.current_polygon = []
-
+            elif self.editing:
+                if self.zone_id is not None and not self.dragging_point:
+                    if select_nearest_point((x, y)) != -1:
+                        self.drawing = False
+                        self.dragging_point = True
         elif event == cv2.EVENT_RBUTTONDOWN:
             if not self.editing:
                 if self.drawing:
@@ -306,22 +280,26 @@ class MaskTool:
                 return True
         return False
 
-    def get_next_available_zone_id(self):
-        if len(self.zones) == 0:
-            return 1
-        return max(self.zones.keys()) + 1
-
     def find_closest_point_index(self, polygon, point):
-        min_distance = float('inf')
+        """Find the closest point in the polygon to the given point."""
+        min_dist = float('inf')
         closest_index = -1
-        for i, p in enumerate(polygon):
-            distance = np.linalg.norm(np.array(p) - np.array(point))
-            if distance < min_distance:
-                min_distance = distance
+        for i, (px, py) in enumerate(polygon):
+            dist = np.linalg.norm(np.array((px, py)) - np.array(point))
+            if dist < min_dist:
+                min_dist = dist
                 closest_index = i
         return closest_index
 
+    def remove_point_from_polygon(self, x, y):
+        """Removes a point from the current polygon."""
+        closest_index = self.find_closest_point_index(self.current_polygon, (x, y))
+        if closest_index != -1:
+            self.current_polygon.pop(closest_index)
+            self.zones[self.zone_id] = self.current_polygon
+
     def save_polygon(self):
+        """Save the current polygon to the zones."""
         if len(self.current_polygon) > 2:
             if self.current_polygon[0] == self.current_polygon[-1]:
                 self.current_polygon.pop()
@@ -350,14 +328,13 @@ class MaskTool:
 
         while True:
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('s'):
-                self.mask_positions.to_csv('mask_tool\\result\\mask_positions.csv', index=True)
-                print("Masks and positions have been saved.")
+
+            if key == ord('e'):
+                self.editing = not self.editing
+            elif key == ord('s'):
+                self.save_mask_positions()
             elif key == ord('u'):
-                if self.undo_stack:
-                    self.zones, self.mask_positions = self.undo_stack.pop()
-                    self.redo_stack.append((self.zones.copy(), self.mask_positions.copy()))
-                    print("Undo last action.")
+                self.undo_last_action()
             elif key == ord('r'):
                 if self.redo_stack:
                     self.zones, self.mask_positions = self.redo_stack.pop()
@@ -397,7 +374,9 @@ class MaskTool:
             self.zones[row['zone_id']] = row['points']
 
 class ZoneIntersectionTracker:
-    def __init__(self, model_path, mask_csv_path, tracker_config="bytetrack.yaml"):
+    def __init__(self, zones, video_source, model_path):
+        self.zones = zones
+        self.cap = cv2.VideoCapture(video_source)
         self.model = YOLO(model_path)
         self.mask_positions = pd.read_csv(mask_csv_path)  # Load mask positions here
         self.zones = {}
@@ -531,9 +510,7 @@ class ZoneIntersectionTracker:
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-            frame_id += 1
-
-        cap.release()
+        self.cap.release()
         cv2.destroyAllWindows()
 
     def save_detection_log(self):

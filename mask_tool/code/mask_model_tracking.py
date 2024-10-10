@@ -6,6 +6,7 @@ import atexit
 
 class MaskTool:
     def __init__(self, video_source, frame_to_edit):
+    def __init__(self, video_source, frame_to_edit):
         self.cap = cv2.VideoCapture(video_source)
         self.mask_positions = pd.DataFrame(columns=['frame', 'zone_id', 'points'])
         self.drawing = False
@@ -13,8 +14,10 @@ class MaskTool:
         self.current_polygon = []
         self.zone_id = 1
         self.frame_id = frame_to_edit  # Initialize with the selected frame
+        self.frame_id = frame_to_edit  # Initialize with the selected frame
         self.dragging_point = False
         self.target_frame = None
+        self.zones = {}
         self.zones = {}
         self.undo_stack = []
         self.redo_stack = []
@@ -22,6 +25,16 @@ class MaskTool:
         self.point_radius = 5
         self.line_threshold = 10
         self.selection_threshold = 10
+
+        # Load existing polygons for the current frame (if any)
+        self.load_polygons_for_frame(self.frame_id) 
+
+        # Set the video capture to the selected frame
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_id)
+        ret, self.target_frame = self.cap.read()
+        if not ret:
+            print("Error: Could not read the frame.")
+            return
 
         # Load existing polygons for the current frame (if any)
         self.load_polygons_for_frame(self.frame_id) 
@@ -131,6 +144,7 @@ class MaskTool:
             # Check distance from point to closest point 
             dist = np.linalg.norm(np.array(point) - np.array(closest_point))
 
+            return dist <   threshold, closest_point
             return dist <   threshold, closest_point
 
         def insert_point_between_segments(point):
@@ -347,6 +361,7 @@ class MaskTool:
         print(" - 'r' to redo")
         print(" - 'e' to toggle editing mode")
         print(" - 'q' to start detection") # Changed message
+        print(" - 'q' to start detection") # Changed message
 
         while True:
             key = cv2.waitKey(1) & 0xFF
@@ -377,6 +392,7 @@ class MaskTool:
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
             elif key == 27 or key == ord('q'):  # Start detection when 'q' is pressed
+            elif key == 27 or key == ord('q'):  # Start detection when 'q' is pressed
                 break
 
             # Redraw after each action to reflect changes
@@ -387,6 +403,7 @@ class MaskTool:
             cv2.imshow('Target Frame', img)
         cv2.destroyAllWindows()
         self.cap.release()
+        return self.mask_positions  # Return the mask positions DataFrame
         return self.mask_positions  # Return the mask positions DataFrame
 
     def load_polygons_for_frame(self, frame_id):
@@ -400,14 +417,21 @@ class ZoneIntersectionTracker:
     def __init__(self, model_path, mask_csv_path, tracker_config="bytetrack.yaml"):
         self.model = YOLO(model_path)
         self.mask_positions = pd.read_csv(mask_csv_path)  # Load mask positions here
+        self.mask_positions = pd.read_csv(mask_csv_path)  # Load mask positions here
         self.zones = {}
+        self.detection_log = []
+        atexit.register(self.save_detection_log)
+        self.tracked_objects = {}
+        self.tracker_config = tracker_config
         self.detection_log = []
         atexit.register(self.save_detection_log)
         self.tracked_objects = {}
         self.tracker_config = tracker_config
 
     def load_zones_for_frame(self, frame_id):  # Remove mask_positions argument
+    def load_zones_for_frame(self, frame_id):  # Remove mask_positions argument
         self.zones.clear()
+        frame_data = self.mask_positions[self.mask_positions['frame'] == frame_to_edit]  # Always load from edited frame
         frame_data = self.mask_positions[self.mask_positions['frame'] == frame_to_edit]  # Always load from edited frame
         for _, row in frame_data.iterrows():
             self.zones[row['zone_id']] = np.array(eval(row['points']))
@@ -480,6 +504,7 @@ class ZoneIntersectionTracker:
                 cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 
+                
             for result in results:
                 boxes = result.boxes
                 masks = result.masks.xy
@@ -535,6 +560,22 @@ class ZoneIntersectionTracker:
                         'first_seen': timestamp,  # Store timestamp
                         'last_seen': timestamp   # Store timestamp
                     })
+            # Log intersection and update tracked_objects (using timestamps)
+            if intersection_detected:
+                if zone_id not in self.tracked_objects[object_id]['zone_entries']:
+                    self.tracked_objects[object_id]['zone_entries'].append(zone_id)
+                    self.detection_log.append({
+                        'frame_id': frame_id,
+                        'object_id': object_id,
+                        'class_id': class_id,
+                        'confidence': conf,
+                        'zone_id': zone_id,
+                        'first_seen': timestamp,  # Store timestamp
+                        'last_seen': timestamp   # Store timestamp
+                    })
+
+                    # Update and save the detection log instantly
+                    self.save_detection_log() 
 
                     # Update and save the detection log instantly
                     self.save_detection_log() 
@@ -561,7 +602,7 @@ class ZoneIntersectionTracker:
                     'zone_id': zone_id
                 })
 
-        df = pd.DataFrame(detection_log)
+        df = pd.DataFrame(self.detection_log)
         
         # # Calculate time duration for each object in the zone
         # df['duration'] = df['last_seen'] - df['first_seen']
