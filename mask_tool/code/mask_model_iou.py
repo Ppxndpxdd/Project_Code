@@ -5,23 +5,33 @@ from ultralytics import YOLO
 import atexit
 
 class MaskTool:
-    def __init__(self, video_source):
+    def __init__(self, video_source, frame_to_edit):
         self.cap = cv2.VideoCapture(video_source)
         self.mask_positions = pd.DataFrame(columns=['frame', 'zone_id', 'points'])
         self.drawing = False
         self.editing = False
         self.current_polygon = []
         self.zone_id = 1
-        self.frame_id = 0
+        self.frame_id = frame_to_edit  # Initialize with the selected frame
         self.dragging_point = False
         self.target_frame = None
-        self.zones = {}  # Store polygons for current frame
+        self.zones = {}
         self.undo_stack = []
         self.redo_stack = []
         self.highlight_radius = 10
         self.point_radius = 5
         self.line_threshold = 10
         self.selection_threshold = 10
+
+        # Load existing polygons for the current frame (if any)
+        self.load_polygons_for_frame(self.frame_id) 
+
+        # Set the video capture to the selected frame
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_id)
+        ret, self.target_frame = self.cap.read()
+        if not ret:
+            print("Error: Could not read the frame.")
+            return
 
     def draw_polygon(self, img, polygon, color=(0, 255, 0)):
         if len(polygon) > 0:
@@ -121,7 +131,7 @@ class MaskTool:
             # Check distance from point to closest point 
             dist = np.linalg.norm(np.array(point) - np.array(closest_point))
 
-            return dist < threshold, closest_point
+            return dist <   threshold, closest_point
 
         def insert_point_between_segments(point):
             """Inserts a point into the active polygon if near a segment."""
@@ -328,16 +338,6 @@ class MaskTool:
             self.redo_stack.clear()
 
     def run(self):
-        self.frame_id = frame_to_edit
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-        ret, self.target_frame = self.cap.read()
-        if not ret:
-            print("Error: Could not read the frame.")
-            return
-
-        # Load existing polygons for the current frame
-        self.load_polygons_for_frame(self.frame_id)
-
         cv2.imshow('Target Frame', self.target_frame)
         cv2.setMouseCallback('Target Frame', self.draw_mask)
 
@@ -346,7 +346,7 @@ class MaskTool:
         print(" - 'u' to undo")
         print(" - 'r' to redo")
         print(" - 'e' to toggle editing mode")
-        print(" - 'q' to quit")
+        print(" - 'q' to start detection") # Changed message
 
         while True:
             key = cv2.waitKey(1) & 0xFF
@@ -376,7 +376,7 @@ class MaskTool:
                     self.drawing = False
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
-            elif key == 27 or key == ord('q'):
+            elif key == 27 or key == ord('q'):  # Start detection when 'q' is pressed
                 break
 
             # Redraw after each action to reflect changes
@@ -387,6 +387,7 @@ class MaskTool:
             cv2.imshow('Target Frame', img)
         cv2.destroyAllWindows()
         self.cap.release()
+        return self.mask_positions  # Return the mask positions DataFrame
 
     def load_polygons_for_frame(self, frame_id):
         """Loads polygons from the DataFrame for the specified frame."""
@@ -396,29 +397,53 @@ class MaskTool:
             self.zones[row['zone_id']] = row['points']
 
 class ZoneIntersectionTracker:
-    def __init__(self, model_path, mask_csv_path):
+    def __init__(self, model_path, mask_csv_path, tracker_config="bytetrack.yaml"):
         self.model = YOLO(model_path)
-        self.mask_positions = pd.read_csv(mask_csv_path)
+        self.mask_positions = pd.read_csv(mask_csv_path)  # Load mask positions here
         self.zones = {}
-        self.next_object_id = 1
-        self.object_ids = {}  # Track object IDs across frames
-        self.detection_log = []  # Store detection log
-        atexit.register(self.save_detection_log)  # Register save function for exit
-        self.object_ids = {}  # Track object IDs across frames
-        self.tracked_objects = {}  # Store information about tracked objects
-        self.iou_threshold = 0.55 # Adjust as needed
-        self.max_lost_frames = 10 # Adjust as needed
+        self.detection_log = []
+        atexit.register(self.save_detection_log)
+        self.tracked_objects = {}
+        self.tracker_config = tracker_config
 
-    def load_zones_for_frame(self, frame_id):
+    def load_zones_for_frame(self, frame_id):  # Remove mask_positions argument
         self.zones.clear()
-        frame_data = self.mask_positions[self.mask_positions['frame'] == frame_id]
+        frame_data = self.mask_positions[self.mask_positions['frame'] == frame_to_edit]  # Always load from edited frame
         for _, row in frame_data.iterrows():
             self.zones[row['zone_id']] = np.array(eval(row['points']))
 
     def intersects(self, bbox_polygon, polygon):
         bbox_polygon = bbox_polygon.reshape((-1, 1, 2)).astype(np.int32)
         polygon = polygon.reshape((-1, 1, 2)).astype(np.int32)
-        return cv2.intersectConvexConvex(bbox_polygon, polygon)[0]
+        
+        # Calculate the intersection area
+        intersection_result = cv2.intersectConvexConvex(bbox_polygon, polygon)
+        
+        # Check if intersection_result is None or empty
+        if intersection_result is None or len(intersection_result) < 2 or intersection_result[1] is None:
+            return False  # No intersection, so IoU is 0
+        
+        intersection_area = np.sum(intersection_result[1])  # Sum in case it's an array
+        
+        # Calculate the area of both polygons
+        bbox_area = cv2.contourArea(bbox_polygon)
+        polygon_area = cv2.contourArea(polygon)
+        
+        # Calculate the union area
+        union_area = bbox_area + polygon_area - intersection_area
+        
+        # Ensure we're working with scalar values
+        intersection_area = float(intersection_area)
+        union_area = float(union_area)
+        
+        # Calculate IoU
+        if union_area > 0:
+            iou = intersection_area / union_area
+        else:
+            iou = 0
+        
+        # Return True if IoU is greater than 0.7, False otherwise
+        return iou > 0.5
 
     def track_intersections(self, video_path, frame_to_edit):
         cap = cv2.VideoCapture(video_path)
@@ -426,78 +451,94 @@ class ZoneIntersectionTracker:
             print("Error: Could not open video.")
             return
 
-        # Set frame position for editing
+        fps = cap.get(cv2.CAP_PROP_FPS)  # Get frames per second
+        
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
-
-        # Get the frame for mask definition
         ret, frame = cap.read()
         if not ret:
             print("Error: Could not read the frame.")
             return
 
-        # Use MaskTool to define the mask
-        mask_tool = MaskTool(video_path)
-        mask_tool.frame_id = frame_to_edit
-        mask_tool.target_frame = frame
-        mask_tool.run()
-
-        # Load zones after saving
-        self.load_zones_for_frame(frame_to_edit)
-
         frame_id = frame_to_edit
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-
-            results = self.model(frame)
             
-            # Draw all user-defined masks
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
+
+            # Load zones for the current frame
+            self.load_zones_for_frame(frame_id) 
+
+            results = self.model.track(frame, persist=True, stream=False, tracker=self.tracker_config)
+
+            # Draw all user-defined masks (green)
             for zone_id, polygon in self.zones.items():
-                cv2.polylines(frame, [polygon.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
-                cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-            
-            current_object_ids = set()  # Keep track of IDs seen in the current frame
-            
+                cv2.polylines(frame, [polygon.astype(np.int32)], isClosed=True,
+                              color=(0, 255, 0), thickness=2)
+                cv2.putText(frame, f"Zone {zone_id}", tuple(polygon[0].astype(np.int32)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                
             for result in results:
-                masks = result.masks.xy  # Get segmentation masks
+                boxes = result.boxes
+                masks = result.masks.xy
 
-                for mask, conf, class_id in zip(masks, result.boxes.conf.cpu().numpy(), result.boxes.cls.cpu().numpy()):
-                    # Assign unique object ID
-                    object_id = self.get_object_id(mask)
-                    current_object_ids.add(object_id)  # Add ID to the set of seen IDs
-                    
+                for i, (mask, conf, class_id) in enumerate(zip(masks, boxes.conf.cpu().numpy(), boxes.cls.cpu().numpy())):
+                    intersection_detected = False
                     for zone_id, polygon in self.zones.items():
-                        # Use masks directly for intersection check
                         if self.intersects(mask, polygon):
-                            print(f"Frame {frame_id}: Object {class_id} (ID: {object_id}) with confidence {conf:.2f} intersects with Zone {zone_id}")
-                            self.detection_log.append({
-                                'frame_id': frame_id,
-                                'object_id': object_id,
-                                'class_id': class_id,
-                                'confidence': conf,
-                                'zone_id': zone_id
-                            })
-                            
-                            # Update tracked object information
-                            if object_id in self.tracked_objects:
-                                self.tracked_objects[object_id]['last_seen'] = frame_id
-                            else:
-                                self.tracked_objects[object_id] = {
-                                    'first_seen': frame_id,
-                                    'last_seen': frame_id,
-                                    'class_id': class_id,
-                                    'zone_id': zone_id
-                                }
-                                
-                            # Draw segmentation mask and label
-                            cv2.polylines(frame, [mask.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=1)
-                            label = f"ID: {object_id} Class: {class_id} Conf: {conf:.2f}"
-                            cv2.putText(frame, label, tuple(mask[0].astype(np.int32)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                            intersection_detected = True
+                            print(f"Intersection detected! Zone: {zone_id}")
 
-            # Remove objects that haven't been seen in a while (optional)
-            self.remove_lost_objects(frame_id, current_object_ids)
-            
+                    # Draw segmentation mask (red if intersects, green otherwise)
+                    mask_color = (0, 0, 255) if intersection_detected else (0, 255, 0)
+                    cv2.polylines(frame, [mask.astype(np.int32).reshape((-1, 1, 2))],
+                                  isClosed=True, color=mask_color, thickness=1)
+
+                    # Draw object ID and label if tracked
+                    if boxes.id is not None:
+                        object_id = boxes.id[i].item()
+                        object_id = int(object_id)  # Convert object_id to integer
+
+                        label = f"ID: {object_id} Class: {class_id} Conf: {conf:.2f}"
+
+                        # Calculate the top-left corner of the bounding box
+                        x1, y1, x2, y2 = boxes.xyxy[i].cpu().numpy().astype(int)
+
+                        # Use the top-left corner as the text origin
+                        org = (x1, y1)
+
+                        cv2.putText(frame, label, org, cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+                        # Update tracked_objects
+                        if object_id not in self.tracked_objects:
+                            self.tracked_objects[object_id] = {
+                                'first_seen': frame_id,
+                                'last_seen': frame_id,
+                                'class_id': class_id,
+                                'zone_entries': []
+                            }
+                        else:
+                            self.tracked_objects[object_id]['last_seen'] = frame_id
+
+            # Log intersection and update tracked_objects (using timestamps)
+            if intersection_detected:
+                if zone_id not in self.tracked_objects[object_id]['zone_entries']:
+                    self.tracked_objects[object_id]['zone_entries'].append(zone_id)
+                    self.detection_log.append({
+                        'frame_id': frame_id,
+                        'object_id': object_id,
+                        'class_id': class_id,
+                        'confidence': conf,
+                        'zone_id': zone_id,
+                        'first_seen': timestamp,  # Store timestamp
+                        'last_seen': timestamp   # Store timestamp
+                    })
+
+                    # Update and save the detection log instantly
+                    self.save_detection_log() 
+
             cv2.imshow('Zone Intersections', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -506,70 +547,42 @@ class ZoneIntersectionTracker:
 
         cap.release()
         cv2.destroyAllWindows()
-    
-    def get_object_id(self, mask):
-        for existing_id, existing_mask in self.object_ids.items():
-            # Convert masks to binary images for accurate IOU calculation
-            mask1_binary = self.mask_to_binary_image(mask)
-            mask2_binary = self.mask_to_binary_image(existing_mask)
 
-            # Resize masks to have the same shape before calculating IOU
-            mask1_resized = cv2.resize(mask1_binary, (mask2_binary.shape[1], mask2_binary.shape[0]))
-
-            iou = self.calculate_iou(mask1_resized, mask2_binary)
-            if iou > self.iou_threshold:
-                return existing_id
-
-        new_id = self.next_object_id
-        self.object_ids[new_id] = mask
-        self.next_object_id += 1
-        return new_id
-
-    def mask_to_binary_image(self, mask):
-        # Create a blank binary image
-        binary_image = np.zeros((np.max(mask[:, 1]).astype(int) + 1, np.max(mask[:, 0]).astype(int) + 1), dtype=np.uint8)
-
-        # Fill the polygon defined by the mask
-        cv2.fillPoly(binary_image, [mask.astype(np.int32)], 255)
-
-        return binary_image
-
-    def calculate_iou(self, mask1, mask2):
-        # Calculate Intersection over Union (IOU) between two binary masks
-        intersection = np.logical_and(mask1, mask2).sum()
-        union = np.logical_or(mask1, mask2).sum()
-        if union == 0:
-            return 0
-        return intersection / union
-
-    def remove_lost_objects(self, current_frame_id, current_object_ids):
-        # Remove objects that haven't been seen for a certain number of frames
-        for object_id in list(self.tracked_objects.keys()):
-            if object_id not in current_object_ids and current_frame_id - self.tracked_objects[object_id]['last_seen'] > self.max_lost_frames: # Use self.max_lost_frames
-                del self.tracked_objects[object_id]
-                
     def save_detection_log(self):
         # Create a list of dictionaries for the DataFrame
         detection_log = []
         for object_id, data in self.tracked_objects.items():
-            detection_log.append({
-                'object_id': object_id,
-                'first_seen': data['first_seen'],
-                'last_seen': data['last_seen'],
-                'class_id': data['class_id'],
-                'zone_id': data['zone_id']
-            })
+            for zone_id in data['zone_entries']:
+                detection_log.append({
+                    'object_id': object_id,
+                    'first_seen': data['first_seen'],  # Now gets timestamp from tracked_objects
+                    'last_seen': data['last_seen'],   # Now gets timestamp from tracked_objects
+                    'class_id': data['class_id'],
+                    'zone_id': zone_id
+                })
 
         df = pd.DataFrame(detection_log)
+        
+        # Calculate time duration for each object in the zone
+        df['duration'] = df['last_seen'] - df['first_seen']
+        
         df.to_csv('detection_log.csv', index=False)
         print("Detection log saved to detection_log.csv")
 
 # Usage
 if __name__ == "__main__":
-    video_source = 'mask_tool\\test_source\\traffic2.mp4'
-    model_path = 'mask_tool\\YoLo\\model\\yolov8n-seg.onnx'
-    mask_csv_path = 'mask_tool\\result\\mask_positions.csv'
+    video_source = 'test_source\\flow.avi'
+    model_path = 'YoLo\\model\\yolov8n-seg.onnx'
     frame_to_edit = int(input("Enter the frame number to edit: "))
 
-    tracker = ZoneIntersectionTracker(model_path, mask_csv_path)
+    # 1. Run MaskTool to define zones on the selected frame
+    mask_tool = MaskTool(video_source, frame_to_edit)
+    mask_positions = mask_tool.run()
+
+    # 2. Save the DataFrame to a CSV file
+    mask_csv_path = 'config\\mask_positions.csv'
+    mask_positions.to_csv(mask_csv_path, index=True)
+
+    # 3. Initialize ZoneIntersectionTracker with the CSV file path
+    tracker = ZoneIntersectionTracker(model_path, mask_csv_path, tracker_config="ByteTrack.yaml")
     tracker.track_intersections(video_source, frame_to_edit)

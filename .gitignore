@@ -2,3 +2,5 @@
 /results
 .venv
 /mask_tool/test_source
+/mask_tool/YoLo
+/mask_tool/TrafficGuard
