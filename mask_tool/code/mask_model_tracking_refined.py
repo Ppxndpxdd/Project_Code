@@ -383,7 +383,6 @@ class ZoneIntersectionTracker:
         self.detection_log = []
         atexit.register(self.save_detection_log)
         self.tracked_objects = {}
-        self.tracker_config = tracker_config
 
     def load_zones_for_frame(self, frame_id):  # Remove mask_positions argument
         self.zones.clear()
