@@ -1,0 +1,58 @@
+[
+    {
+        "object_id": 1,
+        "class_id": "2.0",
+        "zone_id": 2,
+        "first_seen": 0.06666666666666667,
+        "last_seen": 6.9
+    },
+    {
+        "object_id": 3,
+        "class_id": "2.0",
+        "zone_id": 1,
+        "first_seen": 20.633333333333333,
+        "last_seen": null
+    },
+    {
+        "object_id": 4,
+        "class_id": "2.0",
+        "zone_id": 1,
+        "first_seen": 13.3,
+        "last_seen": 19.733333333333334
+    },
+    {
+        "object_id": 4,
+        "class_id": "2.0",
+        "zone_id": 2,
+        "first_seen": 20.333333333333336,
+        "last_seen": null
+    },
+    {
+        "object_id": 6,
+        "class_id": "2.0",
+        "zone_id": 1,
+        "first_seen": 0.16666666666666669,
+        "last_seen": 11.066666666666666
+    },
+    {
+        "object_id": 6,
+        "class_id": "2.0",
+        "zone_id": 2,
+        "first_seen": 11.433333333333334,
+        "last_seen": 23.933333333333334
+    },
+    {
+        "object_id": 16,
+        "class_id": "2.0",
+        "zone_id": 2,
+        "first_seen": 8.566666666666666,
+        "last_seen": 12.966666666666667
+    },
+    {
+        "object_id": 30,
+        "class_id": "2.0",
+        "zone_id": 2,
+        "first_seen": 21.76666666666667,
+        "last_seen": null
+    }
+]

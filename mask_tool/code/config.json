@@ -1,0 +1,21 @@
+{
+    "video_source": "mask_tool/test_source/stream2.mp4",
+    "model_path": "mask_tool/code/YoLo/model/yolov10m.pt",
+    "frame_to_edit": 1,
+    "mask_json_path": "mask_tool/code/input/mask_positions.json",
+    "output_dir": "output",
+    "output_file": "detection_log.json",
+    "tracker_config": "bytetrack.yaml",
+    "highlight_radius": 10,
+    "point_radius": 5,
+    "line_threshold": 10,
+    "selection_threshold": 10,
+    "iou_threshold": 0.1,
+    "time_thresholds": [1, 2, 3],
+    "emqx_host": "f8b13f71.ala.asia-southeast1.emqxsl.com",
+    "emqx_port": 8883,
+    "emqx_username": "PP",
+    "emqx_password": "pppppppp",
+    "emqx_topic": "detection_log"
+  }
+  

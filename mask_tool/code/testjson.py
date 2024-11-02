@@ -354,7 +354,7 @@ class MaskTool:
         while True:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
-                with open('config/mask_positions.json', 'w') as f:
+                with open('mask_tool\\code\\config\\mask_positions.json', 'w') as f:
                     json.dump(self.mask_positions, f)
                 print("Masks and positions have been saved.")
             elif key == ord('u'):
@@ -606,16 +606,16 @@ class ZoneIntersectionTracker:
                 })
 
         # Save the list of dictionaries to a JSON file
-        with open('output/detection_log.json', 'w') as f:
+        with open('mask_tool\\output\\detection_log.json', 'w') as f:
             json.dump(detection_log_list, f, indent=4)
 
         print("Detection log saved to detection_log.json")
 
 # Usage
 if __name__ == "__main__":
-    # video_source = 'test_source/stream2.mp4'
-    video_source = 'rtsp://admin:smart2019@192.168.1.220'
-    model_path = 'YoLo/model/yolov10s.onnx'
+    video_source = 'mask_tool\\test_source\\stream2.mp4'
+    #video_source = 'rtsp://admin:smart2019@192.168.1.220'
+    model_path = 'mask_tool\\YoLo\\model\\yolov10s.onnx'
     frame_to_edit = 1
 
     # 1. Run MaskTool to define zones on the selected frame
@@ -623,7 +623,7 @@ if __name__ == "__main__":
     mask_positions = mask_tool.run()
 
     # 2. Save the mask positions to a JSON file
-    mask_json_path = 'config/mask_positions.json'
+    mask_json_path = 'mask_tool\\code\\config\\mask_positions.json'
     with open(mask_json_path, 'w') as f:
         json.dump(mask_positions, f)
 

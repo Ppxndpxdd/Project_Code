@@ -6,9 +6,11 @@ import atexit
 from collections import defaultdict
 import time
 import json
+import os
+import torch
 
 class MaskTool:
-    def __init__(self, video_source, frame_to_edit):
+    def __init__(self, video_source, frame_to_edit, mask_json_path=None):
         self.cap = cv2.VideoCapture(video_source)
         self.mask_positions = []
         self.drawing = False
@@ -25,16 +27,36 @@ class MaskTool:
         self.point_radius = 5
         self.line_threshold = 10
         self.selection_threshold = 10
+        self.selected_point_index = -1
 
-        # Load existing polygons for the current frame (if any)
-        self.load_polygons_for_frame(self.frame_id) 
+        # Handle mask_json_path
+        if mask_json_path is None:
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            mask_json_path = os.path.join(script_dir, 'config', 'mask_positions.json')
+        self.mask_json_path = mask_json_path
+
+        # Load existing mask positions
+        self.mask_positions = []
+        if os.path.exists(self.mask_json_path):
+            try:
+                with open(self.mask_json_path, 'r') as f:
+                    self.mask_positions = json.load(f)
+            except Exception as e:
+                print(f"Error loading mask positions from {self.mask_json_path}: {e}")
 
         # Set the video capture to the selected frame
+        if not self.cap.isOpened():
+            print(f"Error: Cannot open video source '{video_source}'.")
+            return
+
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_id)
         ret, self.target_frame = self.cap.read()
         if not ret:
             print("Error: Could not read the frame.")
             return
+
+        # Load existing polygons for the current frame (if any)
+        self.load_polygons_for_frame(self.frame_id)
 
     def draw_polygon(self, img, polygon, color=(0, 255, 0)):
         if len(polygon) > 0:
@@ -105,7 +127,7 @@ class MaskTool:
                 print("Polygon too small to close or point too close to start")
         else:
             self.current_polygon.append(point)
-    
+
     def draw_mask(self, event, x, y, flags, param):
         img = self.target_frame.copy()
 
@@ -134,7 +156,7 @@ class MaskTool:
             # Check distance from point to closest point 
             dist = np.linalg.norm(np.array(point) - np.array(closest_point))
 
-            return dist <   threshold, closest_point
+            return dist < threshold, closest_point
 
         def insert_point_between_segments(point):
             """Inserts a point into the active polygon if near a segment."""
@@ -229,7 +251,7 @@ class MaskTool:
                         for i, point in enumerate(polygon):
                             if np.linalg.norm(np.array(point) - np.array((x, y))) < self.selection_threshold:
                                 self.current_polygon = list(polygon)
-                                self.current_polygon.insert(i, point) # Insert duplicate at the same index
+                                self.current_polygon.insert(i, point)  # Insert duplicate at the same index
                                 self.zones[self.zone_id] = self.current_polygon
                                 self.selected_point_index = i
                                 self.dragging_point = True
@@ -241,7 +263,7 @@ class MaskTool:
                     self.current_polygon = []  # Clear the polygon when starting a new one
 
                 if self.drawing:
-                    self.add_point_to_polygon((x, y), img)  # Call using self.
+                    self.add_point_to_polygon((x, y), img)
                 else:
                     insert_point_between_segments((x, y))
                     self.current_polygon.append((x, y))
@@ -252,7 +274,6 @@ class MaskTool:
             self.draw_instructions(img)
             self.draw_polygon(img, self.current_polygon)
             self.draw_axes(img)
-
 
             if self.dragging_point and self.selected_point_index != -1 and self.zone_id is not None:
                 self.current_polygon[self.selected_point_index] = (x, y)
@@ -349,14 +370,17 @@ class MaskTool:
         print(" - 'u' to undo")
         print(" - 'r' to redo")
         print(" - 'e' to toggle editing mode")
-        print(" - 'q' to start detection") # Changed message
+        print(" - 'q' to start detection")
 
         while True:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('s'):
-                with open('config/mask_positions.json', 'w') as f:
+                # Ensure the directory exists
+                mask_dir = os.path.dirname(self.mask_json_path)
+                os.makedirs(mask_dir, exist_ok=True)
+                with open(self.mask_json_path, 'w') as f:
                     json.dump(self.mask_positions, f)
-                print("Masks and positions have been saved.")
+                print(f"Masks and positions have been saved to {self.mask_json_path}.")
             elif key == ord('u'):
                 if self.undo_stack:
                     self.zones, self.mask_positions = self.undo_stack.pop()
@@ -380,29 +404,35 @@ class MaskTool:
                     self.drawing = False
                     self.zone_id = self.get_next_available_zone_id()
                     print(f"Switched to Drawing mode. New zone_id: {self.zone_id}")
-            elif key == 27 or key == ord('q'):  # Start detection when 'q' is pressed
+            elif key == 27 or key == ord('q'):
                 break
 
             # Redraw after each action to reflect changes
             img = self.target_frame.copy()
             self.draw_zone_ids(img)
             self.draw_instructions(img)
-            self.draw_axes(self.target_frame)
+            self.draw_axes(img)
             cv2.imshow('Target Frame', img)
         cv2.destroyAllWindows()
         self.cap.release()
-        return self.mask_positions  # Return the mask positions DataFrame
+        return self.mask_positions
 
     def load_polygons_for_frame(self, frame_id):
         """Loads polygons from the JSON data for the specified frame."""
-        self.zones.clear()  # Clear existing zones
+        self.zones.clear()
         frame_data = [entry for entry in self.mask_positions if entry['frame'] == frame_id]
         for entry in frame_data:
             self.zones[entry['zone_id']] = entry['points']
 
 class ZoneIntersectionTracker:
-    def __init__(self, model_path, mask_json_path, tracker_config="bytetrack.yaml"):
-        self.model = YOLO(model_path)
+    def __init__(self, model_path, mask_json_path, tracker_config="bytetrack.yaml", show_result=True):
+        # Handle model_path
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model file '{model_path}' not found.")
+        self.show_result = show_result
+        # Handle mask_json_path
+        if not os.path.exists(mask_json_path):
+            raise FileNotFoundError(f"Mask positions file '{mask_json_path}' not found.")
         with open(mask_json_path, 'r') as f:
             self.mask_positions = json.load(f)
         self.zones = {}
@@ -411,6 +441,23 @@ class ZoneIntersectionTracker:
         self.tracker_config = tracker_config
         self.object_zone_timers = defaultdict(lambda: defaultdict(float))
         self.fps = 30  # Default FPS, update this in track_intersections method
+
+        # Set output directory and file
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.output_dir = os.path.join(script_dir, 'output')
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.output_file = os.path.join(self.output_dir, 'detection_log.json')
+
+        # Set device
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+            print("Using GPU for inference.")
+        else:
+            self.device = 'cpu'
+            print("Using CPU for inference.")
+
+        # Load the model with the specified device
+        self.model = YOLO(model_path).to(self.device)
 
     def load_zones_for_frame(self, frame_id):
         self.zones.clear()
@@ -463,7 +510,7 @@ class ZoneIntersectionTracker:
     def track_intersections(self, video_path, frame_to_edit):
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
-            print("Error: Could not open video.")
+            print(f"Error: Could not open video source '{video_path}'.")
             return
 
         self.fps = cap.get(cv2.CAP_PROP_FPS)
@@ -486,7 +533,7 @@ class ZoneIntersectionTracker:
 
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
 
-            results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config)
+            results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
 
             self.draw_zones(frame)
 
@@ -582,14 +629,16 @@ class ZoneIntersectionTracker:
                     print(
                         f"Object {track_id}: bbox={bbox_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, zone={intersecting_zone}")
 
-            cv2.imshow('Zone Intersections', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            if self.show_result:
+                cv2.imshow('Zone Intersections', frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
 
             frame_id += 1
 
         cap.release()
-        cv2.destroyAllWindows()
+        if self.show_result:
+            cv2.destroyAllWindows()
 
     def save_detection_log(self):
         """Saves the detection log in JSON format."""
@@ -601,32 +650,42 @@ class ZoneIntersectionTracker:
                     'object_id': object_id,
                     'class_id': data['class_id'],
                     'zone_id': zone_entry['zone_id'],
-                    'first_seen': zone_entry['first_seen'],  # Access first_seen from zone_entry
-                    'last_seen': zone_entry['last_seen']   # Access last_seen from zone_entry
+                    'first_seen': zone_entry['first_seen'],
+                    'last_seen': zone_entry['last_seen']
                 })
 
         # Save the list of dictionaries to a JSON file
-        with open('output/detection_log.json', 'w') as f:
+        os.makedirs(self.output_dir, exist_ok=True)
+        with open(self.output_file, 'w') as f:
             json.dump(detection_log_list, f, indent=4)
 
-        print("Detection log saved to detection_log.json")
+        print(f"Detection log saved to {self.output_file}")
 
 # Usage
 if __name__ == "__main__":
-    # video_source = 'test_source/stream2.mp4'
-    video_source = 'rtsp://admin:smart2019@192.168.1.220'
-    model_path = 'YoLo/model/yolov10s.onnx'
+    import os
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    video_source = 'mask_tool\\test_source\\stream2.mp4'
+    # video_source = 'rtsp://admin:smart2019@192.168.1.220'
+    # Changed to a .pt model for GPU utilization
+    model_path = os.path.join(script_dir, 'YoLo', 'model', 'yolov10n.pt')
     frame_to_edit = 1
 
+    # Set mask JSON path
+    mask_json_path = os.path.join(script_dir, 'config', 'mask_positions.json')
+    mask_dir = os.path.dirname(mask_json_path)
+    os.makedirs(mask_dir, exist_ok=True)
+
     # 1. Run MaskTool to define zones on the selected frame
-    mask_tool = MaskTool(video_source, frame_to_edit)
+    mask_tool = MaskTool(video_source, frame_to_edit, mask_json_path=mask_json_path)
     mask_positions = mask_tool.run()
 
-    # 2. Save the mask positions to a JSON file
-    mask_json_path = 'config/mask_positions.json'
-    with open(mask_json_path, 'w') as f:
-        json.dump(mask_positions, f)
+    # 3. Ask the user whether to display images
+    show_result_input = input("Do you want to display the result images? (y/n): ").lower()
+    show_result = show_result_input == 'y'
 
-    # 3. Initialize ZoneIntersectionTracker with the JSON file path
-    tracker = ZoneIntersectionTracker(model_path, mask_json_path, tracker_config="bytetrack.yaml")
+    # 4. Initialize ZoneIntersectionTracker with the JSON file path and show_result parameter
+    tracker = ZoneIntersectionTracker(model_path, mask_json_path, tracker_config="bytetrack.yaml", show_result=show_result)
     tracker.track_intersections(video_source, frame_to_edit)
