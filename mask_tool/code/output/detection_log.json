@@ -1,58 +1,233 @@
 [
     {
+        "frame_id": 1,
         "object_id": 1,
-        "class_id": "2.0",
+        "class_id": 2,
+        "confidence": 0.8624964952468872,
         "zone_id": 2,
         "first_seen": 0.06666666666666667,
-        "last_seen": 6.9
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
     },
     {
-        "object_id": 3,
-        "class_id": "2.0",
-        "zone_id": 1,
-        "first_seen": 20.633333333333333,
-        "last_seen": null
-    },
-    {
-        "object_id": 4,
-        "class_id": "2.0",
-        "zone_id": 1,
-        "first_seen": 13.3,
-        "last_seen": 19.733333333333334
-    },
-    {
-        "object_id": 4,
-        "class_id": "2.0",
-        "zone_id": 2,
-        "first_seen": 20.333333333333336,
-        "last_seen": null
-    },
-    {
+        "frame_id": 4,
         "object_id": 6,
-        "class_id": "2.0",
+        "class_id": 2,
+        "confidence": 0.7286503911018372,
         "zone_id": 1,
         "first_seen": 0.16666666666666669,
-        "last_seen": 11.066666666666666
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
     },
     {
-        "object_id": 6,
-        "class_id": "2.0",
+        "frame_id": 151,
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8770301342010498,
         "zone_id": 2,
-        "first_seen": 11.433333333333334,
-        "last_seen": 23.933333333333334
+        "first_seen": 0.06666666666666667,
+        "last_seen": null,
+        "duration": 5.000000000000001,
+        "event": "time_exceeded"
     },
     {
+        "frame_id": 155,
+        "object_id": 6,
+        "class_id": 2,
+        "confidence": 0.8434647917747498,
+        "zone_id": 1,
+        "first_seen": 0.16666666666666669,
+        "last_seen": null,
+        "duration": 5.033333333333333,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 206,
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8720555305480957,
+        "zone_id": 2,
+        "first_seen": 0.06666666666666667,
+        "last_seen": 6.9,
+        "duration": 6.833333333333334,
+        "event": "exit"
+    },
+    {
+        "frame_id": 256,
         "object_id": 16,
-        "class_id": "2.0",
+        "class_id": 2,
+        "confidence": 0.5546280145645142,
         "zone_id": 2,
         "first_seen": 8.566666666666666,
-        "last_seen": 12.966666666666667
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
     },
     {
+        "frame_id": 331,
+        "object_id": 6,
+        "class_id": 2,
+        "confidence": 0.7131115794181824,
+        "zone_id": 1,
+        "first_seen": 0.16666666666666669,
+        "last_seen": 11.066666666666666,
+        "duration": 10.9,
+        "event": "exit"
+    },
+    {
+        "frame_id": 342,
+        "object_id": 6,
+        "class_id": 2,
+        "confidence": 0.6788411140441895,
+        "zone_id": 2,
+        "first_seen": 11.433333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
+    },
+    {
+        "frame_id": 388,
+        "object_id": 16,
+        "class_id": 2,
+        "confidence": 0.5332378149032593,
+        "zone_id": 2,
+        "first_seen": 8.566666666666666,
+        "last_seen": 12.966666666666667,
+        "duration": 4.4,
+        "event": "exit"
+    },
+    {
+        "frame_id": 398,
+        "object_id": 4,
+        "class_id": 2,
+        "confidence": 0.680381178855896,
+        "zone_id": 1,
+        "first_seen": 13.3,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
+    },
+    {
+        "frame_id": 493,
+        "object_id": 6,
+        "class_id": 2,
+        "confidence": 0.8606897592544556,
+        "zone_id": 2,
+        "first_seen": 11.433333333333334,
+        "last_seen": null,
+        "duration": 5.033333333333335,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 549,
+        "object_id": 4,
+        "class_id": 2,
+        "confidence": 0.7746866941452026,
+        "zone_id": 1,
+        "first_seen": 13.3,
+        "last_seen": null,
+        "duration": 5.033333333333335,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 591,
+        "object_id": 4,
+        "class_id": 2,
+        "confidence": 0.3489950895309448,
+        "zone_id": 1,
+        "first_seen": 13.3,
+        "last_seen": 19.733333333333334,
+        "duration": 6.433333333333334,
+        "event": "exit"
+    },
+    {
+        "frame_id": 609,
+        "object_id": 4,
+        "class_id": 2,
+        "confidence": 0.7028785347938538,
+        "zone_id": 2,
+        "first_seen": 20.333333333333336,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
+    },
+    {
+        "frame_id": 618,
+        "object_id": 3,
+        "class_id": 5,
+        "confidence": 0.10609488189220428,
+        "zone_id": 1,
+        "first_seen": 20.633333333333333,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
+    },
+    {
+        "frame_id": 652,
         "object_id": 30,
-        "class_id": "2.0",
+        "class_id": 2,
+        "confidence": 0.6591947674751282,
         "zone_id": 2,
         "first_seen": 21.76666666666667,
-        "last_seen": null
+        "last_seen": null,
+        "duration": null,
+        "event": "enter"
+    },
+    {
+        "frame_id": 717,
+        "object_id": 6,
+        "class_id": 2,
+        "confidence": 0.7733966708183289,
+        "zone_id": 2,
+        "first_seen": 11.433333333333334,
+        "last_seen": 23.933333333333334,
+        "duration": 12.5,
+        "event": "exit"
+    },
+    {
+        "frame_id": 760,
+        "object_id": 4,
+        "class_id": 2,
+        "confidence": 0.8308005332946777,
+        "zone_id": 2,
+        "first_seen": 20.333333333333336,
+        "last_seen": null,
+        "duration": 5.033333333333331,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 769,
+        "object_id": 3,
+        "class_id": 2,
+        "confidence": 0.6187833547592163,
+        "zone_id": 1,
+        "first_seen": 20.633333333333333,
+        "last_seen": null,
+        "duration": 5.033333333333335,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 803,
+        "object_id": 30,
+        "class_id": 2,
+        "confidence": 0.924744725227356,
+        "zone_id": 2,
+        "first_seen": 21.76666666666667,
+        "last_seen": null,
+        "duration": 5.033333333333331,
+        "event": "time_exceeded"
+    },
+    {
+        "frame_id": 832,
+        "object_id": 30,
+        "class_id": 2,
+        "confidence": 0.9130548238754272,
+        "zone_id": 2,
+        "first_seen": 21.76666666666667,
+        "last_seen": 27.76666666666667,
+        "duration": 6.0,
+        "event": "exit"
     }
 ]
