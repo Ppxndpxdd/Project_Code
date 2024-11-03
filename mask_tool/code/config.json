@@ -1,6 +1,6 @@
 {
     "video_source": "mask_tool/test_source/stream2.mp4",
-    "model_path": "mask_tool/code/YoLo/model/yolov10m.pt",
+    "model_path": "mask_tool/code/YoLo/model/yolo11m.pt",
     "frame_to_edit": 1,
     "mask_json_path": "mask_tool/code/input/mask_positions.json",
     "output_dir": "output",

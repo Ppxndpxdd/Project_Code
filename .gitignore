@@ -25,3 +25,9 @@ mask_tool/code/YoLo/model/yolov10n.pt
 mask_tool/code/YoLo/model/yolov10s.onnx
 mask_tool/code/YoLo/model/yolov10s.pt
 mask_tool/code/YoLo/model/yolov10x.onnx
+dataset
+dataset/Thai_vehicle_classification_dataset_TR1/traffic.yaml
+yolo11m.pt
+yolo11m-seg.onnx
+yolo11m-seg.pt
+yolo11m.onnx

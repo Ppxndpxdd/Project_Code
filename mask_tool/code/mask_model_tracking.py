@@ -609,8 +609,8 @@ class ZoneIntersectionTracker:
 
 # Usage
 if __name__ == "__main__":
-    video_source = 'mask_tool\\test_source\\CCTV2.mp4'
-    model_path = 'YoLo\\model\\yolov8n-seg.onnx'
+    video_source = 'mask_tool\\test_source\\stream2.mp4'
+    model_path = 'mask_tool\\code\\YoLo\\model\\yolo11m-seg.pt'
     frame_to_edit = 1
 
     # 1. Run MaskTool to define zones on the selected frame
@@ -618,7 +618,7 @@ if __name__ == "__main__":
     mask_positions = mask_tool.run()
 
     # 2. Save the DataFrame to a CSV file
-    mask_csv_path = 'config\\mask_positions.csv'
+    mask_csv_path = 'mask_tool\\code\\config\\mask_positions.csv'
     mask_positions.to_csv(mask_csv_path, index=True)
 
     # 3. Initialize ZoneIntersectionTracker with the CSV file path
