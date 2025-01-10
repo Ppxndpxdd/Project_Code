@@ -2,7 +2,7 @@
     {
         "zone_id": 1,
         "type": "zone",
-        "status": "activate",
+        "status": "deactivate",
         "points": [
             [
                 683,
