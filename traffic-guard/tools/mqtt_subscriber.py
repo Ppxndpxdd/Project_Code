@@ -47,12 +47,12 @@ class MqttSubscriber:
     def on_message(self, client, userdata, msg):
         try:
             payload = json.loads(msg.payload.decode())
-            if msg.topic == 'mask_positions/create':
-                self.create_mask_position(payload)
-            elif msg.topic == 'mask_positions/update':
-                self.update_mask_position(payload)
-            elif msg.topic == 'mask_positions/delete':
-                self.delete_mask_position(payload)
+            if msg.topic == 'marker_positions/create':
+                self.create_marker(payload)
+            elif msg.topic == 'marker_positions/update':
+                self.update_marker(payload)
+            elif msg.topic == 'marker_positions/delete':
+                self.delete_marker(payload)
         except Exception as e:
             logging.error(f"Error processing message from topic {msg.topic}: {e}")
 
@@ -65,46 +65,61 @@ class MqttSubscriber:
             logging.error(f"Could not connect to EMQX: {e}")
 
     def subscribe_to_topics(self):
-        self.mqtt_client.subscribe('mask_positions/create')
-        self.mqtt_client.subscribe('mask_positions/update')
-        self.mqtt_client.subscribe('mask_positions/delete')
-        logging.info("Subscribed to mask_positions topics.")
+        self.mqtt_client.subscribe('marker_positions/create')
+        self.mqtt_client.subscribe('marker_positions/update')
+        self.mqtt_client.subscribe('marker_positions/delete')
+        logging.info("Subscribed to marker_positions topics.")
 
-    def create_mask_position(self, data: Dict[str, Any]):
+    def create_marker(self, data: Dict[str, Any]):
         try:
             with open(self.mask_positions_file, 'r') as f:
                 mask_positions = json.load(f)
             mask_positions.append(data)
             with open(self.mask_positions_file, 'w') as f:
                 json.dump(mask_positions, f, indent=4)
-            logging.info(f"Created mask position: {data}")
+            logging.info(f"Created marker position: {data}")
+            self.publish_log("create complete")
         except Exception as e:
-            logging.error(f"Error creating mask position: {e}")
+            logging.error(f"Error creating marker position: {e}")
 
-    def update_mask_position(self, data: Dict[str, Any]):
+    def update_marker(self, data: Dict[str, Any]):
         try:
             with open(self.mask_positions_file, 'r') as f:
                 mask_positions = json.load(f)
             for i, position in enumerate(mask_positions):
-                if position['frame'] == data['frame'] and position['zone_id'] == data['zone_id']:
+                # Replace 'arrow_id' with 'movement_id'
+                if position.get('zone_id') == data.get('zone_id') or position.get('movement_id') == data.get('movement_id'):
                     mask_positions[i] = data
                     break
             with open(self.mask_positions_file, 'w') as f:
                 json.dump(mask_positions, f, indent=4)
-            logging.info(f"Updated mask position: {data}")
+            logging.info(f"Updated marker position: {data}")
+            self.publish_log("update complete")
         except Exception as e:
-            logging.error(f"Error updating mask position: {e}")
+            logging.error(f"Error updating marker position: {e}")
 
-    def delete_mask_position(self, data: Dict[str, Any]):
+    def delete_marker(self, data: Dict[str, Any]):
         try:
             with open(self.mask_positions_file, 'r') as f:
                 mask_positions = json.load(f)
-            mask_positions = [position for position in mask_positions if not (position['frame'] == data['frame'] and position['zone_id'] == data['zone_id'])]
+            # Replace 'arrow_id' with 'movement_id'
+            mask_positions = [
+                position for position in mask_positions
+                if position.get('zone_id') != data.get('zone_id') and position.get('movement_id') != data.get('movement_id')
+            ]
             with open(self.mask_positions_file, 'w') as f:
                 json.dump(mask_positions, f, indent=4)
-            logging.info(f"Deleted mask position: {data}")
+            logging.info(f"Deleted marker position: {data}")
+            self.publish_log("delete complete")
         except Exception as e:
-            logging.error(f"Error deleting mask position: {e}")
+            logging.error(f"Error deleting marker position: {e}")
+
+    def publish_log(self, message: str):
+        """Publishes a log message to the 'marker_positions/log' topic."""
+        try:
+            self.mqtt_client.publish('marker_positions/log', message)
+        except Exception as e:
+            logging.error(f"Error publishing log message: {e}")
 
     def disconnect(self):
         self.mqtt_client.loop_stop()

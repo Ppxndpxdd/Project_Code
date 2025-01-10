@@ -1,0 +1,7 @@
+{
+  "mqtt_broker": "f8b13f71.ala.asia-southeast1.emqxsl.com",
+  "mqtt_port": 8883,
+  "mqtt_username": "PP",
+  "mqtt_password": "pppppppp",
+  "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt"
+}

@@ -33,4 +33,4 @@ class MqttPublisher:
                 logging.info("Heartbeat sent successfully.")
             except Exception as e:
                 logging.error(f"Failed to send heartbeat: {e}")
-            time.sleep(5)  # Send heartbeat every one second
+            time.sleep(30)  # Send heartbeat every one second

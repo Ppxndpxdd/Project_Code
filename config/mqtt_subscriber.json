@@ -1,0 +1,8 @@
+{
+  "subscribe_topics": [
+    "mask_positions/create",
+    "mask_positions/update",
+    "mask_positions/delete"
+  ],
+  "mask_json_path": "traffic-guard/config/mask_positions.json"
+}

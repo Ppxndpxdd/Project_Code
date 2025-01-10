@@ -4,8 +4,8 @@ from PIL import Image
 import io
 
 # Load the input image
-input_path = 'mask_tool/test_source/cart2.png'  # Replace with your input image path
-output_path = 'cart2.png'  # Replace with your desired output path
+input_path = 'box.avif'  # Replace with your input image path
+output_path = 'box-1.png'  # Replace with your desired output path
 
 # Start timer
 start_time = time.time()

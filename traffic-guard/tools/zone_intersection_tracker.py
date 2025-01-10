@@ -2,20 +2,19 @@ import os
 import json
 import logging
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import Dict, Any, Tuple
 import cv2
 import numpy as np
 import torch
 from .detection_entry import DetectionEntry
 from .mqtt_publisher import MqttPublisher
+from .mqtt_subscriber import MqttSubscriber
 from ultralytics import YOLO
 
 class ZoneIntersectionTracker:
     """Tracks objects in a video and detects intersections with defined zones."""
 
     def __init__(self, config: Dict[str, Any], show_result: bool = True):
-        # Configuration
         self.config = config
         model_path = config['model_path']
         mask_json_path = config['mask_json_path']
@@ -28,13 +27,16 @@ class ZoneIntersectionTracker:
         # Handle mask_json_path
         if not os.path.exists(mask_json_path):
             raise FileNotFoundError(f"Mask positions file '{mask_json_path}' not found.")
-        with open(mask_json_path, 'r') as f:
-            self.mask_positions = json.load(f)
+        self.mask_json_path = mask_json_path
+        self.load_mask_positions()
+
         self.zones = {}
+        self.arrows = {}
         self.detection_log = []
         self.tracked_objects = {}
         self.tracker_config = tracker_config
         self.object_zone_timers = defaultdict(lambda: defaultdict(float))
+
         self.fps = 30  # Default FPS, update this in track_intersections method
 
         # Set output directory and file
@@ -63,18 +65,263 @@ class ZoneIntersectionTracker:
         ]
 
         # Initialize MQTT publisher
-        self.mqtt_publisher = MqttPublisher(config)
+        mqtt_config = {
+            'mqtt_broker': config['mqtt_broker'],
+            'mqtt_port': config['mqtt_port'],
+            'mqtt_username': config['mqtt_username'],
+            'mqtt_password': config['mqtt_password'],
+            'ca_cert_path': config['ca_cert_path']
+        }
+        publisher_config = {
+            'heartbeat_interval': config.get('heartbeat_interval', 60),
+            'heartbeat_topic': config.get('heartbeat_topic', 'heartbeat'),
+            'incident_info_topic': config.get('incident_info_topic', 'incident')
+        }
+        self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
+
+        # Initialize MQTT subscriber
+        self.mqtt_subscriber = MqttSubscriber(config)
+        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/create', self.on_create_marker)
+        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/update', self.on_update_marker)
+        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/delete', self.on_delete_marker)
 
         # Load event-specific configurations
         self.no_entry_zones = config.get('no_entry_zones', [])
         self.no_parking_duration = config.get('no_parking_duration', 60)  # in seconds
 
-    def load_zones_for_frame(self, frame_id: int):
-        """Loads zones for the specified frame."""
+    def load_mask_positions(self):
+        """Loads mask positions from the JSON file."""
+        with open(self.mask_json_path, 'r') as f:
+            self.mask_positions = json.load(f)
+
+    def load_zones(self):
+        """Loads zones from mask positions."""
         self.zones.clear()
-        frame_data = [entry for entry in self.mask_positions if entry['frame'] == frame_id]
-        for entry in frame_data:
-            self.zones[entry['zone_id']] = np.array(entry['points'])
+        for entry in self.mask_positions:
+            if entry['type'] == 'zone':
+                if 'zone_id' in entry:
+                    self.zones[entry['zone_id']] = np.array(entry['points'])
+                else:
+                    logging.warning(f"Zone entry missing 'zone_id': {entry}")
+
+    def load_arrows(self):
+        """Loads arrows from mask positions."""
+        self.arrows.clear()
+        for entry in self.mask_positions:
+            if entry['type'] == 'movement':
+                if 'movement_id' in entry:
+                    self.arrows[entry['movement_id']] = np.array(entry['points'])
+                else:
+                    logging.warning(f"Movement entry missing 'movement_id': {entry}")
+
+    def _validate_payload(self, data: Dict[str, Any]) -> Tuple[bool, str]:
+        """Validates the payload for creating a marker.
+        
+        Returns:
+            Tuple containing a boolean indicating validation success,
+            and an error message if validation fails.
+        """
+        required_fields = ['type', 'points', 'status']
+        
+        # Check for required fields
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            error_msg = f"Payload missing required fields: {missing_fields}."
+            logging.error(error_msg)
+            return False, error_msg
+
+        # Validate 'type' field
+        if data['type'] not in ['zone', 'movement']:
+            error_msg = f"Invalid type: {data['type']}. Must be 'zone' or 'movement'."
+            logging.error(error_msg)
+            return False, error_msg
+
+        # Validate identifier based on type
+        if data['type'] == 'zone':
+            if 'zone_id' not in data:
+                error_msg = "Payload missing 'zone_id' for type 'zone'."
+                logging.error(error_msg)
+                return False, error_msg
+        elif data['type'] == 'movement':
+            if 'movement_id' not in data:
+                error_msg = "Payload missing 'movement_id' for type 'movement'."
+                logging.error(error_msg)
+                return False, error_msg
+
+        # Validate 'points' format
+        if (not isinstance(data['points'], list) or 
+            not all(isinstance(point, list) and len(point) == 2 for point in data['points'])):
+            error_msg = "Invalid 'points' format. Must be a list of [x, y] pairs."
+            logging.error(error_msg)
+            return False, error_msg
+
+        # Validate 'status' field
+        if data['status'] not in ['activate', 'deactivate']:
+            error_msg = f"Invalid status: {data['status']}. Must be 'activate' or 'deactivate'."
+            logging.error(error_msg)
+            return False, error_msg
+
+        return True, "Payload is valid."
+
+    def on_create_marker(self, client, userdata, msg):
+        """Handles the creation of a new marker from an MQTT message."""
+        try:
+            data = json.loads(msg.payload.decode())
+
+            is_valid, message = self._validate_payload(data)
+            if not is_valid:
+                # Do not proceed with invalid payload
+                logging.error(f"Invalid payload received: {message}")
+                self.mqtt_publisher.send_incident({"error": message})
+                return
+
+            # Check for duplicate IDs
+            if data['type'] == 'zone':
+                existing_ids = [entry['zone_id'] for entry in self.mask_positions if entry['type'] == 'zone']
+                if data['zone_id'] in existing_ids:
+                    error_msg = f"Zone with zone_id={data['zone_id']} already exists."
+                    logging.error(error_msg)
+                    self.mqtt_publisher.send_incident({"error": error_msg})
+                    return
+            elif data['type'] == 'movement':
+                existing_ids = [entry['movement_id'] for entry in self.mask_positions if entry['type'] == 'movement']
+                if data['movement_id'] in existing_ids:
+                    error_msg = f"Movement with movement_id={data['movement_id']} already exists."
+                    logging.error(error_msg)
+                    self.mqtt_publisher.send_incident({"error": error_msg})
+                    return
+
+            self.mask_positions.append(data)
+            self.save_mask_positions()
+            self.load_zones()
+            self.load_arrows()
+            logging.info(f"Created marker position: {data}")
+            self.mqtt_publisher.send_incident({"message": "create complete"})
+        except json.JSONDecodeError:
+            error_msg = "Invalid JSON payload. Marker creation aborted."
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+        except Exception as e:
+            error_msg = f"Error creating marker position: {e}"
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+
+    def on_update_marker(self, client, userdata, msg):
+        """Handles the update of an existing marker from an MQTT message."""
+        try:
+            data = json.loads(msg.payload.decode())
+            is_valid, message = self._validate_payload(data)
+            if not is_valid:
+                logging.error(f"Invalid payload received: {message}")
+                self.mqtt_publisher.send_incident({"error": message})
+                return
+
+            updated = False
+            for i, position in enumerate(self.mask_positions):
+                if position.get('type') == 'zone' and 'zone_id' in data and position.get('zone_id') == data['zone_id']:
+                    self.mask_positions[i] = data
+                    updated = True
+                    break
+                elif position.get('type') == 'movement' and 'movement_id' in data and position.get('movement_id') == data['movement_id']:
+                    self.mask_positions[i] = data
+                    updated = True
+                    break
+            if not updated:
+                warning_msg = "No matching marker found to update."
+                logging.warning(warning_msg)
+                self.mqtt_publisher.send_incident({"warning": warning_msg})
+                return
+            self.save_mask_positions()
+            self.load_zones()
+            self.load_arrows()
+            logging.info(f"Updated marker position: {data}")
+            self.mqtt_publisher.send_incident({"message": "update complete"})
+        except json.JSONDecodeError:
+            error_msg = "Invalid JSON payload. Marker update aborted."
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+        except Exception as e:
+            error_msg = f"Error updating marker position: {e}"
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+
+    def on_delete_marker(self, client, userdata, msg):
+        """Handles the deletion of a marker from an MQTT message."""
+        try:
+            data = json.loads(msg.payload.decode())
+            markers_deleted = 0
+
+            if 'zone_id' in data:
+                zone_id = data['zone_id']
+                original_count = len(self.mask_positions)
+                self.mask_positions = [
+                    position for position in self.mask_positions
+                    if not (position.get('type') == 'zone' and position.get('zone_id') == zone_id)
+                ]
+                markers_deleted = original_count - len(self.mask_positions)
+                logging.debug(f"Markers deleted with zone_id={zone_id}: {markers_deleted}")
+
+                # Remove zone entries from tracked_objects
+                for track_id, obj in self.tracked_objects.items():
+                    original_entries = len(obj['zone_entries'])
+                    obj['zone_entries'] = [
+                        entry for entry in obj['zone_entries']
+                        if entry['zone_id'] != zone_id
+                    ]
+                    if len(obj['zone_entries']) < original_entries:
+                        logging.debug(f"Reset zone entries for object {track_id} due to zone deletion.")
+
+            elif 'movement_id' in data:
+                movement_id = data['movement_id']
+                original_count = len(self.mask_positions)
+                self.mask_positions = [
+                    position for position in self.mask_positions
+                    if not (position.get('type') == 'movement' and position.get('movement_id') == movement_id)
+                ]
+                markers_deleted = original_count - len(self.mask_positions)
+                logging.debug(f"Markers deleted with movement_id={movement_id}: {markers_deleted}")
+
+                # Remove movement entries from tracked_objects if applicable
+                for track_id, obj in self.tracked_objects.items():
+                    original_entries = len(obj['zone_entries'])
+                    obj['zone_entries'] = [
+                        entry for entry in obj['zone_entries']
+                        if entry['zone_id'] != movement_id
+                    ]
+                    if len(obj['zone_entries']) < original_entries:
+                        logging.debug(f"Reset zone entries for object {track_id} due to movement deletion.")
+
+            else:
+                error_msg = "Delete payload must contain either 'zone_id' or 'movement_id'."
+                logging.error(error_msg)
+                self.mqtt_publisher.send_incident({"error": error_msg})
+                return
+
+            if markers_deleted == 0:
+                warning_msg = "No matching marker found to delete."
+                logging.warning(warning_msg)
+                self.mqtt_publisher.send_incident({"warning": warning_msg})
+            else:
+                logging.info(f"Deleted marker position: {data}")
+                self.mqtt_publisher.send_incident({"message": "delete complete"})
+
+            self.save_mask_positions()
+            self.load_zones()
+            self.load_arrows()
+
+        except json.JSONDecodeError:
+            error_msg = "Invalid JSON payload. Marker deletion aborted."
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+        except Exception as e:
+            error_msg = f"Error deleting marker position: {e}"
+            logging.error(error_msg)
+            self.mqtt_publisher.send_incident({"error": error_msg})
+
+    def save_mask_positions(self):
+        """Saves the mask positions to the JSON file."""
+        with open(self.mask_json_path, 'w') as f:
+            json.dump(self.mask_positions, f, indent=4)
 
     def calculate_iou(self, bbox: np.ndarray, polygon: np.ndarray) -> float:
         """Calculates the Intersection over Union (IoU) between a bounding box and a polygon."""
@@ -119,6 +366,16 @@ class ZoneIntersectionTracker:
             for point in polygon:
                 cv2.circle(frame, tuple(point.astype(int)), 3, color, -1)
 
+    def draw_arrows(self, frame: np.ndarray):
+        """Draws arrows on the frame."""
+        for arrow_id, arrow_points in self.arrows.items():
+            if len(arrow_points) < 2:
+                continue
+            pts = arrow_points.reshape((-1, 1, 2)).astype(np.int32)
+            cv2.polylines(frame, [pts], isClosed=False, color=(255, 0, 0), thickness=3)
+            cv2.putText(frame, f"Arrow {arrow_id}", tuple(arrow_points[0]), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.6, (255, 0, 0), 2)
+
     def track_intersections(self, video_path: str, frame_to_edit: int):
         """Tracks objects in the video and detects zone intersections."""
         cap = cv2.VideoCapture(video_path)
@@ -135,7 +392,8 @@ class ZoneIntersectionTracker:
             logging.error("Could not read the frame.")
             return
 
-        self.load_zones_for_frame(frame_to_edit)
+        self.load_zones()
+        self.load_arrows()
 
         frame_id = frame_to_edit
 
@@ -145,10 +403,11 @@ class ZoneIntersectionTracker:
                 break
 
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
-
             results = self.model.track(frame, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
 
+            # Draw zones and arrows on the current frame
             self.draw_zones(frame)
+            self.draw_arrows(frame)
 
             for result in results:
                 boxes = result.boxes
@@ -195,7 +454,6 @@ class ZoneIntersectionTracker:
 
                             # Prepare entry message
                             detection_entry = DetectionEntry(
-                                frame_id=frame_id,
                                 object_id=track_id,
                                 class_id=int(class_id),
                                 confidence=float(conf),
@@ -216,7 +474,6 @@ class ZoneIntersectionTracker:
                                     entry['last_seen'] = float(timestamp)
                                     # Log the zone entry only when the object leaves
                                     detection_entry = DetectionEntry(
-                                        frame_id=frame_id,
                                         object_id=track_id,
                                         class_id=int(class_id),
                                         confidence=float(conf),
@@ -243,9 +500,8 @@ class ZoneIntersectionTracker:
                                 current_zone = zone_entry['zone_id']
                             # Check if total duration exceeded and not yet logged
                             if 'threshold_logged' not in zone_entry and time_in_zone > self.no_parking_duration:
-                                # Log the event
+                                logging.info(f"Object {track_id} exceeded no_parking duration in zone {current_zone}")
                                 detection_entry = DetectionEntry(
-                                    frame_id=frame_id,
                                     object_id=track_id,
                                     class_id=int(class_id),
                                     confidence=float(conf),
@@ -264,7 +520,6 @@ class ZoneIntersectionTracker:
                     if current_zone in self.no_entry_zones:
                         logging.info(f"Object {track_id} is in a no_entry zone: {current_zone}")
                         detection_entry = DetectionEntry(
-                            frame_id=frame_id,
                             object_id=track_id,
                             class_id=int(class_id),
                             confidence=float(conf),
@@ -300,7 +555,7 @@ class ZoneIntersectionTracker:
                         f"Object {track_id}: bbox={bbox_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, zone={intersecting_zone}")
 
             if self.show_result:
-                cv2.imshow('Zone Intersections', frame)
+                cv2.imshow('Marker Tool', frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
 

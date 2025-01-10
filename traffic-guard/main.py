@@ -1,5 +1,5 @@
 import json
-from tools.mask_tool import MaskTool
+from tools.mask_tool import MarkerZone
 from tools.zone_intersection_tracker import ZoneIntersectionTracker
 from tools.mqtt_subscriber import MqttSubscriber
 
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     mqtt_subscriber = MqttSubscriber(config)
 
     # 1. Run MaskTool to define zones on the selected frame
-    mask_tool = MaskTool(config)
+    mask_tool = MarkerZone(config)
     mask_positions = mask_tool.run()
 
     # 2. Ask the user whether to display images

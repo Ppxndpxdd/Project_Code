@@ -1,0 +1,14 @@
+{
+    "model_path": "traffic-guard/model/yolo11m.pt",
+    "output_dir": "output",
+    "output_file": "detection_log.json",
+    "tracker_config": "bytetrack.yaml",
+    "highlight_radius": 10,
+    "point_radius": 5,
+    "line_threshold": 10,
+    "selection_threshold": 10,
+    "iou_threshold": 0.1,
+    "total_duration": 5,
+    "no_entry_zones": ["zone1", "zone2"],
+    "no_parking_duration": 5
+  }

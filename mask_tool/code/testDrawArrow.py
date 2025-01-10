@@ -55,7 +55,7 @@ class PLICPTracker:
         return np.array(matched_points), is_matching
 
 
-class MaskTool:
+class MarkerMovement:
     def __init__(self, video_source, frame_to_edit, mask_json_path='arrow_positions.json'):
         self.video_source = video_source
         self.frame_to_edit = frame_to_edit
