@@ -55,7 +55,7 @@ class MqttSubscriber:
                 self.delete_marker(payload)
         except Exception as e:
             logging.error(f"Error processing message from topic {msg.topic}: {e}")
-
+    
     def connect(self):
         try:
             logging.info(f"Connecting to EMQX at {self.emqx_host}:{self.emqx_port} over TLS/SSL...")
@@ -87,8 +87,7 @@ class MqttSubscriber:
             with open(self.mask_positions_file, 'r') as f:
                 mask_positions = json.load(f)
             for i, position in enumerate(mask_positions):
-                # Replace 'arrow_id' with 'movement_id'
-                if position.get('zone_id') == data.get('zone_id') or position.get('movement_id') == data.get('movement_id'):
+                if position.get('marker_id') == data.get('marker_id'):
                     mask_positions[i] = data
                     break
             with open(self.mask_positions_file, 'w') as f:

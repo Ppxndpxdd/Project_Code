@@ -12,7 +12,7 @@
   "selection_threshold": 10,
   "iou_threshold": 0.1,
   "total_duration": 5,
-  "no_entry_zones": [],
+  "no_entry_zones": [2],
   "no_parking_duration": 5,
   "mqtt_broker": "f8b13f71.ala.asia-southeast1.emqxsl.com",
   "mqtt_port": 8883,

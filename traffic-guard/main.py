@@ -1,12 +1,12 @@
 import json
-from tools.mask_tool import MarkerZone
+from tools.marker_zone import MarkerZone
 from tools.zone_intersection_tracker import ZoneIntersectionTracker
 from tools.mqtt_subscriber import MqttSubscriber
 
 if __name__ == "__main__":
     import os
 
-    # Load configuration from config.json
+    # Load configuration from configs.json
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, 'config', 'config.json')
     with open(config_path, 'r') as config_file:
