@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import json
 import logging
 import threading
@@ -15,11 +16,22 @@ class MqttPublisher:
         self.heartbeat_thread.start()
 
     def send_incident(self, detection_entry):
-        """Sends incident info to the MQTT broker."""
+        if not isinstance(detection_entry, dict):
+            try:
+                payload = asdict(detection_entry)
+            except Exception as e:
+                logging.error(f"Failed to convert detection_entry to dict: {e}")
+                payload = {}
+        else:
+            payload = detection_entry
+
+        if not payload:
+            logging.error("Payload is empty. Incident not sent.")
+            return
+
+        logging.debug(f"Sending incident payload: {payload}")
         try:
-            logging.info(f"Sending incident: {detection_entry}")
-            self.mqtt_handler.publish_detection(detection_entry.__dict__)
-            logging.info("Incident sent successfully.")
+            self.mqtt_handler.publish_detection(payload)
         except Exception as e:
             logging.error(f"Failed to send incident: {e}")
 

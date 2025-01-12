@@ -20,5 +20,10 @@
   "mqtt_password": "pppppppp",
   "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
   "incident_info_topic": "incident",
-  "heartbeat_topic": "heartbeat"
+  "heartbeat_topic": "heartbeat",
+  "subscribe_topics": [
+    "marker_positions/create",
+    "marker_positions/update",
+    "marker_positions/delete"
+  ]
 }

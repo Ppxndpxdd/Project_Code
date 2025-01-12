@@ -1,15 +1,14 @@
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Tuple, Optional
 
 @dataclass
 class DetectionEntry:
-    def __init__(self, object_id, class_id, confidence, marker_id, first_seen, last_seen, duration, event, bbox):
-        self.object_id = object_id
-        self.class_id = class_id
-        self.confidence = confidence
-        self.marker_id = marker_id
-        self.first_seen = first_seen
-        self.last_seen = last_seen
-        self.duration = duration
-        self.event = event
-        self.bbox = bbox
+    object_id: int
+    class_id: int
+    confidence: float
+    marker_id: int
+    first_seen: float
+    last_seen: Optional[float]
+    duration: Optional[float]
+    event: str
+    bbox: Tuple[float, float, float, float]
