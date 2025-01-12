@@ -50,6 +50,7 @@ class MarkerZone:
         # Initialize dictionaries
         self.markers = {}
         self.zones = {}
+        self.arrow_zones = {}
         self.arrows = {}
         self.load_markers()
 
@@ -66,17 +67,18 @@ class MarkerZone:
         """Loads markers from mask_positions.json and populates zones and arrows."""
         self.markers.clear()
         self.zones.clear()
+        self.arrow_zones.clear()
         self.arrows.clear()
         for entry in self.mask_positions:
             marker_id = entry.get('marker_id')
             marker_type = entry.get('type')
-            points = entry.get('points', [])
-            if marker_id and marker_type and points:
+            if marker_id and marker_type:
                 self.markers[marker_id] = entry
                 if marker_type == 'zone':
-                    self.zones[marker_id] = points
+                    self.zones[marker_id] = entry['points']
                 elif marker_type == 'movement':
-                    self.arrows[marker_id] = points
+                    self.arrow_zones[marker_id] = entry['polygon_points']
+                    self.arrows[marker_id] = entry['line_points']
                 else:
                     logging.warning(f"Unknown marker type '{marker_type}' for marker_id={marker_id}")
 
@@ -85,7 +87,7 @@ class MarkerZone:
             return 1
         return max(self.markers.keys()) + 1
 
-    def run(self) -> List[Dict[str, Any]]:
+    def run(self) -> List[Dict[str, Any]]: 
         cv2.imshow('Target Frame', self.target_frame)
         cv2.setMouseCallback('Target Frame', self.mouse_callback)
 
@@ -95,6 +97,9 @@ class MarkerZone:
                 self.current_tool = 'zone'
                 logging.info("Switched to Zone tool")
             elif key == ord('a'):
+                self.current_tool = 'arrow_zone'
+                logging.info("Switched to Arrow Zone tool")
+            elif key == ord('m'):
                 self.current_tool = 'arrow'
                 logging.info("Switched to Arrow tool")
             elif key == ord('s'):
@@ -154,6 +159,41 @@ class MarkerZone:
                 self.current_polygon = []
                 self.save_mask_positions()
 
+        elif self.current_tool == 'arrow_zone':
+            if event == cv2.EVENT_LBUTTONDOWN:
+                if not self.drawing:
+                    self.current_polygon = []
+                    self.drawing = True
+                self.current_polygon.append((x, y))
+            elif event == cv2.EVENT_MOUSEMOVE and self.drawing:
+                temp_polygon = self.current_polygon + [(x, y)]
+                self.draw_polygon(img, temp_polygon, (0, 255, 255))
+                cv2.imshow('Target Frame', img)
+            elif event == cv2.EVENT_RBUTTONDOWN and self.drawing:
+                self.drawing = False
+                if len(self.current_polygon) > 2:
+                    # Close polygon
+                    self.current_polygon.append(self.current_polygon[0])
+                    marker_id = self.get_next_marker_id()
+                    self.arrow_zones[marker_id] = self.current_polygon.copy()
+                    self.markers[marker_id] = {
+                        "marker_id": marker_id,
+                        "type": "movement",
+                        "status": "activate",
+                        "polygon_points": self.current_polygon,
+                        "line_points": []
+                    }
+                    self.mask_positions.append({
+                        "marker_id": marker_id,
+                        "type": "movement",
+                        "status": "activate",
+                        "polygon_points": self.current_polygon,
+                        "line_points": []
+                    })
+                    logging.info(f"Added Arrow Zone marker with marker_id={marker_id}")
+                self.current_polygon = []
+                self.save_mask_positions()
+
         elif self.current_tool == 'arrow':
             if event == cv2.EVENT_LBUTTONDOWN:
                 if not self.drawing:
@@ -167,21 +207,19 @@ class MarkerZone:
             elif event == cv2.EVENT_RBUTTONDOWN and self.drawing:
                 self.drawing = False
                 if len(self.arrow_points) > 1:
+                    # Ensure an arrow zone is defined before defining an arrow
+                    if not self.arrow_zones:
+                        logging.error("Define an arrow zone before defining an arrow.")
+                        return
                     marker_id = self.get_next_marker_id()
+                    # Use the last defined arrow zone for the arrow
+                    last_marker_id = max(self.arrow_zones.keys())
+                    last_arrow_zone = self.arrow_zones[last_marker_id]
                     self.arrows[marker_id] = self.arrow_points.copy()
-                    self.markers[marker_id] = {
-                        "marker_id": marker_id,
-                        "type": "movement",
-                        "status": "activate",
-                        "points": self.arrow_points
-                    }
-                    self.mask_positions.append({
-                        "marker_id": marker_id,
-                        "type": "movement",
-                        "status": "activate",
-                        "points": self.arrow_points
-                    })
-                    logging.info(f"Added Movement marker with marker_id={marker_id}")
+                    self.markers[last_marker_id]['line_points'] = self.arrow_points
+                    self.mask_positions = [m for m in self.mask_positions if m['marker_id'] != last_marker_id]
+                    self.mask_positions.append(self.markers[last_marker_id])
+                    logging.info(f"Added Movement marker with marker_id={last_marker_id}")
                 self.arrow_points = []
                 self.save_mask_positions()
 
@@ -205,20 +243,25 @@ class MarkerZone:
                     cv2.putText(img, f"Marker {marker_id} (Zone)", (cx, cy),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-        # Draw Arrows
-        for marker_id, arrow_points in self.arrows.items():
-            self.draw_multipoint_arrow(img, arrow_points, (255, 0, 0))
-            if len(arrow_points) > 1:
-                # Display the marker_id near the start point
-                start_point = arrow_points[0]
-                cv2.putText(img, f"Marker {marker_id} (Movement)", start_point,
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+        # Draw Arrow Zones and Arrows
+        for marker_id, marker_data in self.markers.items():
+            if marker_data['type'] == 'movement':
+                polygon_points = marker_data['polygon_points']
+                line_points = marker_data['line_points']
+                self.draw_polygon(img, polygon_points, (0, 255, 255))
+                self.draw_multipoint_arrow(img, line_points, (255, 0, 0))
+                if len(line_points) > 1:
+                    # Display the marker_id near the start point
+                    start_point = line_points[0]
+                    cv2.putText(img, f"Marker {marker_id} (Movement)", start_point,
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
 
     def draw_instructions(self, img: np.ndarray):
         lines = [
             "Keys:",
             " Z = Zone tool",
-            " A = Arrow tool",
+            " A = Arrow Zone tool",
+            " M = Arrow tool",
             " S = Save",
             " U = Undo",
             " R = Redo",
@@ -258,6 +301,7 @@ class MarkerZone:
         if marker_type == 'zone':
             self.zones.pop(marker_id, None)
         elif marker_type == 'movement':
+            self.arrow_zones.pop(marker_id, None)
             self.arrows.pop(marker_id, None)
         self.markers.pop(marker_id, None)
         self.mask_positions = [m for m in self.mask_positions if m['marker_id'] != marker_id]
@@ -271,11 +315,11 @@ class MarkerZone:
         action = self.redo_stack.pop()
         marker_id = action['marker_id']
         marker_type = action['type']
-        points = action['points']
         if marker_type == 'zone':
-            self.zones[marker_id] = points
+            self.zones[marker_id] = action['points']
         elif marker_type == 'movement':
-            self.arrows[marker_id] = points
+            self.arrow_zones[marker_id] = action['polygon_points']
+            self.arrows[marker_id] = action['line_points']
         self.markers[marker_id] = action
         self.mask_positions.append(action)
         self.undo_stack.append(action)
