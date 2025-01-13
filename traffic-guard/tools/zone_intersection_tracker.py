@@ -7,10 +7,12 @@ from typing import Dict, Any, Tuple, List
 import cv2
 import numpy as np
 import torch
+from shapely.geometry import Polygon
 from .detection_entry import DetectionEntry
 from .mqtt_publisher import MqttPublisher
 from .mqtt_subscriber import MqttSubscriber
 from ultralytics import YOLO
+
 
 class ZoneIntersectionTracker:
     """Tracks objects in a video and detects intersections with defined zones."""
@@ -145,11 +147,15 @@ class ZoneIntersectionTracker:
         for entry in self.mask_positions:
             if entry.get('type') == 'movement':
                 marker_id = entry.get('marker_id')
-                points = entry.get('points', [])
-                if marker_id and points:
-                    self.arrows[marker_id] = np.array(points)
+                polygon_points = entry.get('polygon_points', [])
+                line_points = entry.get('line_points', [])
+                if marker_id and polygon_points and line_points:
+                    self.arrows[marker_id] = {
+                        'polygon_points': np.array(polygon_points),
+                        'line_points': np.array(line_points)
+                    }
                 else:
-                    logging.warning(f"Movement entry missing 'marker_id' or 'points': {entry}")
+                    logging.warning(f"Movement entry missing 'marker_id', 'polygon_points', or 'line_points': {entry}")
 
     def on_create_marker(self, client, userdata, msg):
         """Handles the creation of a new marker from an MQTT message."""
@@ -188,7 +194,7 @@ class ZoneIntersectionTracker:
 
     def _validate_payload(self, data: Dict[str, Any]) -> Tuple[bool, str]:
         """Validates the payload for creating a marker."""
-        required_fields = ['marker_id', 'type', 'points', 'status']
+        required_fields = ['marker_id', 'type', 'status']
         
         # Check for required fields
         missing_fields = [field for field in required_fields if field not in data]
@@ -210,12 +216,34 @@ class ZoneIntersectionTracker:
             logging.error(error_msg)
             return False, error_msg
 
-        # Validate 'points' format
-        if (not isinstance(data['points'], list) or 
-            not all(isinstance(point, list) and len(point) == 2 for point in data['points'])):
-            error_msg = "Invalid 'points' format. Must be a list of [x, y] pairs."
-            logging.error(error_msg)
-            return False, error_msg
+        # Validate 'points' format for 'zone' type
+        if data['type'] == 'zone':
+            if 'points' not in data:
+                error_msg = "Missing 'points' for zone type."
+                logging.error(error_msg)
+                return False, error_msg
+            if (not isinstance(data['points'], list) or 
+                not all(isinstance(point, list) and len(point) == 2 for point in data['points'])):
+                error_msg = "Invalid 'points' format for zone. Must be a list of [x, y] pairs."
+                logging.error(error_msg)
+                return False, error_msg
+
+        # Validate 'polygon_points' and 'line_points' for 'movement' type
+        if data['type'] == 'movement':
+            if 'polygon_points' not in data or 'line_points' not in data:
+                error_msg = "Missing 'polygon_points' or 'line_points' for movement type."
+                logging.error(error_msg)
+                return False, error_msg
+            if (not isinstance(data['polygon_points'], list) or 
+                not all(isinstance(point, list) and len(point) == 2 for point in data['polygon_points'])):
+                error_msg = "Invalid 'polygon_points' format for movement. Must be a list of [x, y] pairs."
+                logging.error(error_msg)
+                return False, error_msg
+            if (not isinstance(data['line_points'], list) or 
+                not all(isinstance(point, list) and len(point) == 2 for point in data['line_points'])):
+                error_msg = "Invalid 'line_points' format for movement. Must be a list of [x, y] pairs."
+                logging.error(error_msg)
+                return False, error_msg
 
         # Validate 'status' field
         if data['status'] not in ['activate', 'deactivate']:
@@ -277,11 +305,32 @@ class ZoneIntersectionTracker:
             logging.error(error_msg)
             return False, error_msg
 
-        # Validate 'points' format if present
-        if 'points' in data:
+        # Validate 'points' format if present for 'zone'
+        if data.get('type') == 'zone':
+            if 'points' not in data:
+                error_msg = "Missing 'points' for zone type."
+                logging.error(error_msg)
+                return False, error_msg
             if (not isinstance(data['points'], list) or 
                 not all(isinstance(point, list) and len(point) == 2 for point in data['points'])):
-                error_msg = "Invalid 'points' format. Must be a list of [x, y] pairs."
+                error_msg = "Invalid 'points' format for zone. Must be a list of [x, y] pairs."
+                logging.error(error_msg)
+                return False, error_msg
+
+        # Validate 'polygon_points' and 'line_points' format if present for 'movement'
+        if data.get('type') == 'movement':
+            if 'polygon_points' not in data or 'line_points' not in data:
+                error_msg = "Missing 'polygon_points' or 'line_points' for movement type."
+                logging.error(error_msg)
+                return False, error_msg
+            if (not isinstance(data['polygon_points'], list) or 
+                not all(isinstance(point, list) and len(point) == 2 for point in data['polygon_points'])):
+                error_msg = "Invalid 'polygon_points' format for movement. Must be a list of [x, y] pairs."
+                logging.error(error_msg)
+                return False, error_msg
+            if (not isinstance(data['line_points'], list) or 
+                not all(isinstance(point, list) and len(point) == 2 for point in data['line_points'])):
+                error_msg = "Invalid 'line_points' format for movement. Must be a list of [x, y] pairs."
                 logging.error(error_msg)
                 return False, error_msg
 
@@ -358,29 +407,25 @@ class ZoneIntersectionTracker:
     def calculate_iou(self, bbox: np.ndarray, polygon: np.ndarray) -> float:
         """Calculates the Intersection over Union (IoU) between a bounding box and a polygon."""
         x1, y1, x2, y2 = bbox
-        bbox_poly = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], dtype=np.float32)
+        bbox_polygon = Polygon([
+            (x1, y1),
+            (x2, y1),
+            (x2, y2),
+            (x1, y2)
+        ])
+        polygon_shape = Polygon(polygon)
 
-        # Calculate intersection
-        intersection = cv2.intersectConvexConvex(bbox_poly, polygon.astype(np.float32))
-        if intersection[1] is None:
+        intersection = bbox_polygon.intersection(polygon_shape)
+        union = bbox_polygon.union(polygon_shape)
+        if union.area == 0:
             return 0.0
-
-        intersection_area = cv2.contourArea(intersection[1])
-
-        # Calculate union
-        bbox_area = (x2 - x1) * (y2 - y1)
-        polygon_area = cv2.contourArea(polygon)
-        union_area = bbox_area + polygon_area - intersection_area
-
-        # Calculate IoU
-        iou = intersection_area / union_area if union_area > 0 else 0.0
-
-        return iou
+        return intersection.area / union.area
 
     def intersects(self, bbox: np.ndarray, polygon: np.ndarray) -> Tuple[bool, float]:
         """Determines if a bounding box intersects with a polygon."""
         iou = self.calculate_iou(bbox, polygon)
-        return iou > self.config.get('iou_threshold', 0.1), iou
+        intersects = iou > self.config.get('iou_threshold', 0.1)
+        return intersects, iou
 
     def draw_zones(self, frame: np.ndarray):
         """Draws zones on the frame."""
@@ -396,13 +441,28 @@ class ZoneIntersectionTracker:
 
     def draw_arrows(self, frame: np.ndarray):
         """Draws arrows on the frame."""
-        for arrow_id, arrow_points in self.arrows.items():
-            if len(arrow_points) >= 2:
-                pts = arrow_points.reshape((-1, 1, 2)).astype(np.int32)
-                cv2.polylines(frame, [pts], isClosed=False, color=(255, 0, 0), thickness=3)
-                cv2.putText(frame, f"Arrow {arrow_id}", tuple(arrow_points[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        for marker_id, arrow_data in self.arrows.items():
+            polygon_points = arrow_data['polygon_points']
+            line_points = arrow_data['line_points']
+            color_polygon = (0, 255, 255)  # Yellow color for arrow zones
+            color_line = (255, 0, 0)        # Blue color for arrows
+            thickness = 2
+
+            if polygon_points.shape[0] >= 3:
+                cv2.polylines(frame, [polygon_points.astype(np.int32)], isClosed=True, color=color_polygon, thickness=thickness)
+                centroid = np.mean(polygon_points, axis=0).astype(int)
+                cv2.putText(frame, f"Arrow Zone {marker_id}", tuple(centroid), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_polygon, thickness)
             else:
-                logging.warning(f"Arrow {arrow_id} has insufficient points to draw.")
+                logging.warning(f"Arrow Zone {marker_id} has insufficient points to draw.")
+
+            if line_points.shape[0] >= 2:
+                for i in range(len(line_points) - 1):
+                    start_point = tuple(map(int, line_points[i]))
+                    end_point = tuple(map(int, line_points[i + 1]))
+                    cv2.arrowedLine(frame, start_point, end_point, color_line, thickness=2, tipLength=0.05)
+                cv2.putText(frame, f"Movement {marker_id}", tuple(line_points[0].astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_line, thickness)
+            else:
+                logging.warning(f"Movement {marker_id} has insufficient points to draw.")
 
     def track_intersections(self, video_path: str, frame_to_edit: int):
         """Tracks objects in the video and detects zone intersections."""
@@ -431,7 +491,7 @@ class ZoneIntersectionTracker:
                 break
 
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
-            results = self.model.track(frame,verbose=False, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
+            results = self.model.track(frame, verbose=False, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
 
             # Draw zones and arrows on the current frame
             self.draw_zones(frame)
@@ -520,6 +580,67 @@ class ZoneIntersectionTracker:
                                     # Publish the detection_entry to EMQX
                                     self.mqtt_publisher.send_incident(detection_entry)
 
+                    # Handle movement markers
+                    for marker_id, arrow_data in self.arrows.items():
+                        polygon_points = arrow_data['polygon_points']
+                        line_points = arrow_data['line_points']
+                        intersects_movement, iou_movement = self.intersects(bbox_np, polygon_points)
+                        if iou_movement > max_iou:
+                            max_iou = iou_movement
+                            intersecting_marker_id = marker_id if intersects_movement else None
+
+                        # Handle movement entry and exit logic
+                        marker_entry_exists = any(entry['marker_id'] == marker_id for entry in
+                                                 self.tracked_objects[track_id]['marker_entries'])
+                        if intersects_movement and not marker_entry_exists:
+                            # Object just entered the movement zone
+                            entry = {
+                                'marker_id': int(marker_id),
+                                'first_seen': float(timestamp),
+                                'last_seen': None
+                            }
+                            self.tracked_objects[track_id]['marker_entries'].append(entry)
+
+                            # Prepare entry message
+                            detection_entry = DetectionEntry(
+                                object_id=track_id,
+                                class_id=int(class_id),
+                                confidence=float(conf),
+                                marker_id=int(marker_id),
+                                first_seen=float(timestamp),
+                                last_seen=None,
+                                duration=None,
+                                event='enter_movement',
+                                bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                            )
+                            # Publish the detection_entry to EMQX
+                            self.detection_log.append(detection_entry)
+                            self.save_detection_log()
+                            self.mqtt_publisher.send_incident(detection_entry)
+                            
+                        elif not intersects_movement and marker_entry_exists:
+                            # Object just exited the movement zone
+                            for entry in self.tracked_objects[track_id]['marker_entries']:
+                                if entry['marker_id'] == marker_id and entry['last_seen'] is None:
+                                    entry['last_seen'] = float(timestamp)
+                                    # Log the marker entry only when the object leaves
+                                    detection_entry = DetectionEntry(
+                                        object_id=track_id,
+                                        class_id=int(class_id),
+                                        confidence=float(conf),
+                                        marker_id=int(marker_id),
+                                        first_seen=float(entry['first_seen']),
+                                        last_seen=float(timestamp),
+                                        duration=float(timestamp - entry['first_seen']),
+                                        event='exit_movement',
+                                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                                    )
+                                    self.detection_log.append(detection_entry)
+                                    self.save_detection_log()  # Save when the object leaves the movement zone
+
+                                    # Publish the detection_entry to EMQX
+                                    self.mqtt_publisher.send_incident(detection_entry)
+
                     time_in_zone = 0
                     current_marker_id = None
                     for marker_entry in self.tracked_objects[track_id]['marker_entries']:
@@ -540,7 +661,7 @@ class ZoneIntersectionTracker:
                                     last_seen=None,
                                     duration=float(time_in_zone),
                                     event='no_parking',
-                                    bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))  # Convert bbox to float
+                                    bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
                                 )
                                 self.detection_log.append(detection_entry)
                                 self.save_detection_log()
@@ -559,7 +680,7 @@ class ZoneIntersectionTracker:
                             last_seen=None,
                             duration=None,
                             event='no_entry',
-                            bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))  # Convert bbox to float
+                            bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
                         )
                         self.detection_log.append(detection_entry)
                         self.save_detection_log()

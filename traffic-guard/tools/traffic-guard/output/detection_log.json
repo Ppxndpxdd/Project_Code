@@ -1,34 +1,786 @@
 [
     {
-        "object_id": 66,
+        "object_id": 10,
+        "class_id": 2,
+        "confidence": 0.45214176177978516,
+        "marker_id": 1,
+        "first_seen": 0.06666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            1101.100341796875,
+            288.6996765136719,
+            1227.9605712890625,
+            412.4736633300781
+        ]
+    },
+    {
+        "object_id": 6,
         "class_id": 7,
-        "confidence": 0.46486490964889526,
+        "confidence": 0.687983512878418,
         "marker_id": 2,
-        "first_seen": 1.4333333333333333,
+        "first_seen": 0.16666666666666669,
         "last_seen": null,
         "duration": null,
         "event": "enter",
         "bbox": [
-            714.9063720703125,
-            129.467529296875,
-            906.8622436523438,
-            239.41102600097656
+            1104.3203125,
+            129.58914184570312,
+            1283.3131103515625,
+            233.92311096191406
         ]
     },
     {
-        "object_id": 66,
+        "object_id": 6,
         "class_id": 7,
-        "confidence": 0.5153617262840271,
+        "confidence": 0.6593466997146606,
+        "marker_id": 2,
+        "first_seen": 0.2,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1089.9820556640625,
+            129.2063751220703,
+            1271.9053955078125,
+            235.2430419921875
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.516779899597168,
+        "marker_id": 2,
+        "first_seen": 0.23333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1079.30810546875,
+            128.59310913085938,
+            1262.2808837890625,
+            235.34725952148438
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5755590200424194,
+        "marker_id": 2,
+        "first_seen": 0.26666666666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1067.8853759765625,
+            128.843505859375,
+            1249.22021484375,
+            234.6573486328125
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5826814770698547,
+        "marker_id": 2,
+        "first_seen": 0.3,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1064.2509765625,
+            128.96156311035156,
+            1244.8465576171875,
+            234.35720825195312
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.4133293628692627,
+        "marker_id": 2,
+        "first_seen": 0.33333333333333337,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1057.68115234375,
+            132.54197692871094,
+            1233.0887451171875,
+            234.87261962890625
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5274107456207275,
+        "marker_id": 2,
+        "first_seen": 0.3666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1047.6871337890625,
+            132.93405151367188,
+            1223.2010498046875,
+            235.04637145996094
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5549919009208679,
+        "marker_id": 2,
+        "first_seen": 0.4,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1033.2490234375,
+            132.0169677734375,
+            1211.212890625,
+            235.5265350341797
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.2609599530696869,
+        "marker_id": 2,
+        "first_seen": 0.43333333333333335,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1019.0645751953125,
+            129.43746948242188,
+            1199.3779296875,
+            234.322021484375
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.3629678785800934,
+        "marker_id": 2,
+        "first_seen": 0.4666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1007.5615844726562,
+            128.15206909179688,
+            1189.1412353515625,
+            233.96481323242188
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.35873943567276,
+        "marker_id": 2,
+        "first_seen": 0.5,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            1003.6898193359375,
+            127.64616394042969,
+            1185.6260986328125,
+            233.8563232421875
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.48024144768714905,
+        "marker_id": 2,
+        "first_seen": 0.5333333333333333,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            993.5651245117188,
+            127.23213195800781,
+            1174.53759765625,
+            232.93087768554688
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.40544551610946655,
+        "marker_id": 2,
+        "first_seen": 0.5666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            982.9102783203125,
+            128.69874572753906,
+            1163.4517822265625,
+            234.03677368164062
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.14520353078842163,
+        "marker_id": 2,
+        "first_seen": 0.6,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            973.625,
+            127.4397964477539,
+            1153.357666015625,
+            232.35093688964844
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.21154914796352386,
+        "marker_id": 2,
+        "first_seen": 0.6333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            960.9782104492188,
+            130.1452178955078,
+            1138.4970703125,
+            233.21121215820312
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.12365749478340149,
+        "marker_id": 2,
+        "first_seen": 0.6666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            954.6566772460938,
+            141.3839569091797,
+            1115.7646484375,
+            232.72915649414062
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.36600807309150696,
+        "marker_id": 2,
+        "first_seen": 0.7666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            917.7315063476562,
+            128.36260986328125,
+            1100.9674072265625,
+            232.67401123046875
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5185297131538391,
+        "marker_id": 2,
+        "first_seen": 0.8,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            907.0003051757812,
+            126.88221740722656,
+            1092.900634765625,
+            233.4158172607422
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.4046722948551178,
+        "marker_id": 2,
+        "first_seen": 0.8333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            895.1343383789062,
+            125.67163848876953,
+            1082.0928955078125,
+            233.42823791503906
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.6055276393890381,
+        "marker_id": 2,
+        "first_seen": 0.8666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            882.3409423828125,
+            125.97013092041016,
+            1068.99365234375,
+            233.99725341796875
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.39030495285987854,
+        "marker_id": 2,
+        "first_seen": 0.9,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            872.0296630859375,
+            126.0953598022461,
+            1056.176025390625,
+            233.12417602539062
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.40248751640319824,
+        "marker_id": 2,
+        "first_seen": 0.9333333333333333,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            868.6676635742188,
+            126.19503021240234,
+            1051.4710693359375,
+            232.85110473632812
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5782971382141113,
+        "marker_id": 2,
+        "first_seen": 0.9666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            858.833251953125,
+            126.67587280273438,
+            1041.7947998046875,
+            233.54147338867188
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.28828197717666626,
+        "marker_id": 2,
+        "first_seen": 1.0,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            845.1636962890625,
+            126.24464416503906,
+            1031.48046875,
+            235.5154266357422
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.17959736287593842,
+        "marker_id": 2,
+        "first_seen": 1.0333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            835.4341430664062,
+            126.58472442626953,
+            1021.077392578125,
+            235.77545166015625
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.30599120259284973,
+        "marker_id": 2,
+        "first_seen": 1.1,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            811.357666015625,
+            127.77954864501953,
+            994.5885620117188,
+            236.1214141845703
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.32936739921569824,
+        "marker_id": 2,
+        "first_seen": 1.1333333333333333,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            807.5244140625,
+            127.91336059570312,
+            989.5961303710938,
+            236.113037109375
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.16256782412528992,
+        "marker_id": 2,
+        "first_seen": 1.1666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            797.066650390625,
+            129.06439208984375,
+            980.969970703125,
+            238.634521484375
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.2818312346935272,
+        "marker_id": 2,
+        "first_seen": 1.2,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            798.879638671875,
+            127.89712524414062,
+            986.3847045898438,
+            237.46644592285156
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.25274717807769775,
+        "marker_id": 2,
+        "first_seen": 1.2333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            788.9588623046875,
+            126.96243286132812,
+            980.4550170898438,
+            237.52000427246094
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.13359664380550385,
+        "marker_id": 2,
+        "first_seen": 1.2666666666666668,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            779.9451293945312,
+            129.6263885498047,
+            969.7943115234375,
+            237.4825439453125
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.18375614285469055,
+        "marker_id": 2,
+        "first_seen": 1.3,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            765.3480224609375,
+            126.51160430908203,
+            962.5977172851562,
+            237.66909790039062
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.18540063500404358,
+        "marker_id": 2,
+        "first_seen": 1.3333333333333335,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            759.0696411132812,
+            129.7986602783203,
+            952.8397827148438,
+            238.45755004882812
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.289299339056015,
+        "marker_id": 2,
+        "first_seen": 1.3666666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            741.31689453125,
+            128.42153930664062,
+            936.5612182617188,
+            238.64437866210938
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.32617059350013733,
+        "marker_id": 2,
+        "first_seen": 1.4000000000000001,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            728.4924926757812,
+            130.34230041503906,
+            919.4501953125,
+            238.87680053710938
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.5153560042381287,
         "marker_id": 2,
         "first_seen": 1.4333333333333333,
-        "last_seen": 1.4666666666666668,
-        "duration": 0.03333333333333344,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            714.6757202148438,
+            129.380615234375,
+            906.09033203125,
+            239.16586303710938
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.4945644438266754,
+        "marker_id": 2,
+        "first_seen": 1.4666666666666668,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            703.6817626953125,
+            129.2930145263672,
+            894.0966796875,
+            239.28517150878906
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.31136244535446167,
+        "marker_id": 2,
+        "first_seen": 1.5,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            700.4011840820312,
+            128.3054656982422,
+            884.4090576171875,
+            236.17977905273438
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.3162834644317627,
+        "marker_id": 2,
+        "first_seen": 1.5333333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            700.4000244140625,
+            127.92784118652344,
+            880.5751342773438,
+            235.00531005859375
+        ]
+    },
+    {
+        "object_id": 6,
+        "class_id": 7,
+        "confidence": 0.315267413854599,
+        "marker_id": 2,
+        "first_seen": 0.16666666666666669,
+        "last_seen": 1.6333333333333333,
+        "duration": 1.4666666666666666,
         "event": "exit",
         "bbox": [
-            703.5859985351562,
-            129.36285400390625,
-            894.5603637695312,
-            239.53244018554688
+            665.8429565429688,
+            129.54672241210938,
+            851.819091796875,
+            240.429931640625
+        ]
+    },
+    {
+        "object_id": 226,
+        "class_id": 2,
+        "confidence": 0.31008750200271606,
+        "marker_id": 1,
+        "first_seen": 4.733333333333333,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            1104.3138427734375,
+            302.7494812011719,
+            1215.4427490234375,
+            439.0016784667969
+        ]
+    },
+    {
+        "object_id": 226,
+        "class_id": 2,
+        "confidence": 0.8901539444923401,
+        "marker_id": 1,
+        "first_seen": 7.933333333333334,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            1093.94970703125,
+            322.76361083984375,
+            1204.0152587890625,
+            461.2996520996094
+        ]
+    },
+    {
+        "object_id": 645,
+        "class_id": 2,
+        "confidence": 0.41485804319381714,
+        "marker_id": 1,
+        "first_seen": 11.9,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            1093.329833984375,
+            357.3798828125,
+            1191.432861328125,
+            509.8658752441406
+        ]
+    },
+    {
+        "object_id": 645,
+        "class_id": 2,
+        "confidence": 0.42673733830451965,
+        "marker_id": 1,
+        "first_seen": 11.9,
+        "last_seen": 11.933333333333334,
+        "duration": 0.033333333333333215,
+        "event": "exit_movement",
+        "bbox": [
+            1093.0433349609375,
+            360.73101806640625,
+            1189.2711181640625,
+            510.23529052734375
+        ]
+    },
+    {
+        "object_id": 3,
+        "class_id": 2,
+        "confidence": 0.8354844450950623,
+        "marker_id": 1,
+        "first_seen": 15.666666666666668,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            1166.5706787109375,
+            286.624267578125,
+            1316.898193359375,
+            403.8838806152344
+        ]
+    },
+    {
+        "object_id": 351,
+        "class_id": 7,
+        "confidence": 0.5393496751785278,
+        "marker_id": 1,
+        "first_seen": 15.766666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            768.5880126953125,
+            381.72314453125,
+            938.939697265625,
+            544.9046020507812
+        ]
+    },
+    {
+        "object_id": 954,
+        "class_id": 7,
+        "confidence": 0.36407390236854553,
+        "marker_id": 1,
+        "first_seen": 15.966666666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            763.5652465820312,
+            378.6678161621094,
+            916.0451049804688,
+            519.0112915039062
+        ]
+    },
+    {
+        "object_id": 351,
+        "class_id": 7,
+        "confidence": 0.7138608694076538,
+        "marker_id": 1,
+        "first_seen": 15.766666666666667,
+        "last_seen": 16.033333333333335,
+        "duration": 0.2666666666666675,
+        "event": "exit_movement",
+        "bbox": [
+            767.76318359375,
+            382.90472412109375,
+            907.0562133789062,
+            513.1597290039062
         ]
     }
 ]
