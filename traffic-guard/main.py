@@ -1,10 +1,13 @@
 import json
+import logging
 from tools.marker_zone import MarkerZone
 from tools.zone_intersection_tracker import ZoneIntersectionTracker
 from tools.mqtt_subscriber import MqttSubscriber
+from tools.mqtt_publisher import MqttPublisher
 
 if __name__ == "__main__":
     import os
+    logging.basicConfig(level=logging.INFO)
 
     # Load configuration from configs.json
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,6 +17,7 @@ if __name__ == "__main__":
 
     # Initialize MQTT Subscriber
     mqtt_subscriber = MqttSubscriber(config)
+    mqtt_publisher = MqttPublisher(config)
 
     # 1. Run MaskTool to define zones on the selected frame
     mask_tool = MarkerZone(config)

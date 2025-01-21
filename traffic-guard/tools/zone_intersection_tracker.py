@@ -21,6 +21,10 @@ class ZoneIntersectionTracker:
         self.config = config
         model_path = config['model_path']
         mask_json_path = config['mask_json_path']
+        
+        unique_id = config.get('unique_id', 'default_id')
+        logging.info(f"ZoneIntersectionTracker initialized with unique_id: {unique_id}")
+        
         self.tracker_config = config.get('tracker_config', 'bytetrack.yaml')
         self.show_result = show_result
 
@@ -84,17 +88,18 @@ class ZoneIntersectionTracker:
             'ca_cert_path': config['ca_cert_path']
         }
         publisher_config = {
+            'unique_id': unique_id,
             'heartbeat_interval': config.get('heartbeat_interval', 60),
-            'heartbeat_topic': config.get('heartbeat_topic', 'heartbeat'),
-            'incident_info_topic': config.get('incident_info_topic', 'incident')
+            'heartbeat_topic': f'{unique_id}/heartbeat',
+            'incident_info_topic': f'{unique_id}/incident'
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
 
         # Initialize MQTT subscriber
         self.mqtt_subscriber = MqttSubscriber(config)
-        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/create', self.on_create_marker)
-        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/update', self.on_update_marker)
-        self.mqtt_subscriber.mqtt_client.message_callback_add('marker_positions/delete', self.on_delete_marker)
+        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{unique_id}/marker/create', self.on_create_marker)
+        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{unique_id}/marker/update', self.on_update_marker)
+        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{unique_id}/marker/delete', self.on_delete_marker)
 
         # Load event-specific configurations
         self.no_entry_zones = config.get('no_entry_zones', [])

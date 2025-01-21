@@ -10,7 +10,10 @@ class MqttPublisher:
         self.mqtt_handler = MqttHandler(config)
         self.heartbeat_interval = config.get('heartbeat_interval', 60)  # in seconds
         self.heartbeat_topic = config.get('heartbeat_topic', 'heartbeat_log')
-
+        self.unique_id = config.get('unique_id')
+        if not self.unique_id or self.unique_id == 'default_id':
+            logging.error("Invalid unique_id provided in config.")
+            raise ValueError("unique_id must be set in the configuration.")
         # Start the heartbeat thread
         self.heartbeat_thread = threading.Thread(target=self.send_heartbeat, daemon=True)
         self.heartbeat_thread.start()
@@ -28,10 +31,10 @@ class MqttPublisher:
         if not payload:
             logging.error("Payload is empty. Incident not sent.")
             return
-
+        topic = f"{self.unique_id}/incident"
         logging.debug(f"Sending incident payload: {payload}")
         try:
-            self.mqtt_handler.publish_detection(payload)
+            self.mqtt_handler.publish(topic, json.dumps(payload))
         except Exception as e:
             logging.error(f"Failed to send incident: {e}")
 
@@ -40,8 +43,9 @@ class MqttPublisher:
         while True:
             try:
                 heartbeat_message = {"status": "alive"}
+                topic = f"{self.unique_id}/heartbeat"
                 logging.info(f"Sending heartbeat to topic {self.heartbeat_topic}")
-                self.mqtt_handler.publish(self.heartbeat_topic, json.dumps(heartbeat_message))
+                self.mqtt_handler.publish(topic, json.dumps(heartbeat_message))
                 logging.info("Heartbeat sent successfully.")
             except Exception as e:
                 logging.error(f"Failed to send heartbeat: {e}")
