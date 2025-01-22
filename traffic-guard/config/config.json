@@ -20,7 +20,7 @@
     "mqtt_username": "PP",
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
-    "unique_id": "tJi5Hj",
+    "edge_id": "tJi5Hj",
     "incident_info_topic": "incident",
     "heartbeat_topic": "heartbeat",
     "subscribe_topics": [

@@ -13,7 +13,7 @@ class MqttSubscriber:
         self.emqx_password = config.get('mqtt_password', '')
         self.client_id = 'client-' + str(uuid.uuid4())
         self.mask_positions_file = config.get('mask_json_path', 'mask_positions.json')
-        self.unique_id = config.get('unique_id', 'default_id')
+        self.edge_id = config.get('edge_id', 'default_id')
         
         self.mqtt_client = mqtt_client.Client(client_id=self.client_id, protocol=mqtt_client.MQTTv311)
         self.mqtt_client.username_pw_set(self.emqx_username, self.emqx_password)
@@ -48,11 +48,11 @@ class MqttSubscriber:
     def on_message(self, client, userdata, msg):
         try:
             payload = json.loads(msg.payload.decode())
-            if msg.topic == f"{self.unique_id}/marker/create":
+            if msg.topic == f"{self.edge_id}/marker/create":
                 self.create_marker(payload)
-            elif msg.topic == f"{self.unique_id}/marker/update":
+            elif msg.topic == f"{self.edge_id}/marker/update":
                 self.update_marker(payload)
-            elif msg.topic == f"{self.unique_id}/marker/delete":
+            elif msg.topic == f"{self.edge_id}/marker/delete":
                 self.delete_marker(payload)
         except Exception as e:
             logging.error(f"Error processing message from topic {msg.topic}: {e}")
@@ -67,9 +67,9 @@ class MqttSubscriber:
 
     def subscribe_to_topics(self):
         topics = [
-            f"{self.unique_id}/marker/create",
-            f"{self.unique_id}/marker/update",
-            f"{self.unique_id}/marker/delete"
+            f"{self.edge_id}/marker/create",
+            f"{self.edge_id}/marker/update",
+            f"{self.edge_id}/marker/delete"
         ]
         for topic in topics:
             self.mqtt_client.subscribe(topic)
@@ -120,7 +120,7 @@ class MqttSubscriber:
     def publish_log(self, message: str):
         """Publishes a log message to the 'marker_positions/log' topic."""
         try:
-            self.mqtt_client.publish(f'{self.unique_id}/marker/log', message)
+            self.mqtt_client.publish(f'{self.edge_id}/marker/log', message)
         except Exception as e:
             logging.error(f"Error publishing log message: {e}")
 
