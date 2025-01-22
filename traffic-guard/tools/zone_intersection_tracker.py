@@ -646,58 +646,13 @@ class ZoneIntersectionTracker:
                                     # Publish the detection_entry to EMQX
                                     self.mqtt_publisher.send_incident(detection_entry)
 
-                    time_in_zone = 0
-                    current_marker_id = None
-                    for marker_entry in self.tracked_objects[track_id]['marker_entries']:
-                        if marker_entry['last_seen'] is None:
-                            current_time_in_zone = timestamp - marker_entry['first_seen']
-                            if current_time_in_zone > time_in_zone:
-                                time_in_zone = current_time_in_zone
-                                current_marker_id = marker_entry['marker_id']
-                            # Check if total duration exceeded and not yet logged
-                            if 'threshold_logged' not in marker_entry and time_in_zone > self.no_parking_duration:
-                                logging.info(f"Object {track_id} exceeded no_parking duration in marker {current_marker_id}")
-                                detection_entry = DetectionEntry(
-                                    object_id=track_id,
-                                    class_id=int(class_id),
-                                    confidence=float(conf),
-                                    marker_id=int(current_marker_id),
-                                    first_seen=float(marker_entry['first_seen']),
-                                    last_seen=None,
-                                    duration=float(time_in_zone),
-                                    event='no_parking',
-                                    bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
-                                )
-                                self.detection_log.append(detection_entry)
-                                self.save_detection_log()
-                                self.mqtt_publisher.send_incident(detection_entry)
-                                marker_entry['threshold_logged'] = True
-
-                    # Check for no_entry event
-                    if current_marker_id in self.no_entry_zones:
-                        logging.info(f"Object {track_id} is in a no_entry zone: {current_marker_id}")
-                        detection_entry = DetectionEntry(
-                            object_id=track_id,
-                            class_id=int(class_id),
-                            confidence=float(conf),
-                            marker_id=int(current_marker_id),
-                            first_seen=float(timestamp),
-                            last_seen=None,
-                            duration=None,
-                            event='no_entry',
-                            bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
-                        )
-                        self.detection_log.append(detection_entry)
-                        self.save_detection_log()
-                        self.mqtt_publisher.send_incident(detection_entry)
+                    # Check for no_parking and no_entry events
+                    self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp)
+                    self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp)
 
                     # Determine color based on time in zone
-                    if time_in_zone > self.time_thresholds[1]:
-                        bbox_color = (0, 0, 255)  # Red
-                    elif time_in_zone > self.time_thresholds[0]:
-                        bbox_color = (0, 165, 255)  # Orange
-                    else:
-                        bbox_color = (0, 255, 0)  # Green
+                    time_in_zone = self._get_time_in_zone(track_id, timestamp)
+                    bbox_color = self._get_bbox_color(time_in_zone)
 
                     # Draw bounding box
                     x1, y1, x2, y2 = bbox_np.astype(int)
@@ -705,7 +660,7 @@ class ZoneIntersectionTracker:
 
                     # Draw object ID, IoU, time in zone, and marker info
                     label1 = f"ID: {track_id} IoU: {max_iou:.2f}"
-                    label2 = f"Time: {time_in_zone:.1f}s Marker: {current_marker_id if current_marker_id else 'N/A'}"
+                    label2 = f"Time: {time_in_zone:.1f}s Marker: {intersecting_marker_id if intersecting_marker_id else 'N/A'}"
                     cv2.putText(frame, label1, (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
                     cv2.putText(frame, label2, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
 
@@ -727,6 +682,68 @@ class ZoneIntersectionTracker:
         # Disconnect MQTT client
         self.mqtt_publisher.mqtt_handler.disconnect()
         logging.info("Disconnected from EMQX.")
+
+    def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+        """Checks if an object has exceeded the no_parking duration in a zone."""
+        for marker_entry in self.tracked_objects[track_id]['marker_entries']:
+            if marker_entry['last_seen'] is None:
+                time_in_zone = timestamp - marker_entry['first_seen']
+                if time_in_zone > self.no_parking_duration and 'threshold_logged' not in marker_entry:
+                    logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_entry['marker_id']}")
+                    detection_entry = DetectionEntry(
+                        object_id=track_id,
+                        class_id=int(class_id),
+                        confidence=float(conf),
+                        marker_id=int(marker_entry['marker_id']),
+                        first_seen=float(marker_entry['first_seen']),
+                        last_seen=None,
+                        duration=float(time_in_zone),
+                        event='no_parking',
+                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                    )
+                    self.detection_log.append(detection_entry)
+                    self.save_detection_log()
+                    self.mqtt_publisher.send_incident(detection_entry)
+                    marker_entry['threshold_logged'] = True
+
+    def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+        """Checks if an object is in a no_entry zone."""
+        for marker_entry in self.tracked_objects[track_id]['marker_entries']:
+            if marker_entry['marker_id'] in self.no_entry_zones and marker_entry['last_seen'] is None:
+                logging.info(f"Object {track_id} is in a no_entry zone: {marker_entry['marker_id']}")
+                detection_entry = DetectionEntry(
+                    object_id=track_id,
+                    class_id=int(class_id),
+                    confidence=float(conf),
+                    marker_id=int(marker_entry['marker_id']),
+                    first_seen=float(timestamp),
+                    last_seen=None,
+                    duration=None,
+                    event='no_entry',
+                    bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                )
+                self.detection_log.append(detection_entry)
+                self.save_detection_log()
+                self.mqtt_publisher.send_incident(detection_entry)
+
+    def _get_time_in_zone(self, track_id: int, timestamp: float) -> float:
+        """Calculates the time an object has spent in any zone."""
+        time_in_zone = 0
+        for marker_entry in self.tracked_objects[track_id]['marker_entries']:
+            if marker_entry['last_seen'] is None:
+                current_time_in_zone = timestamp - marker_entry['first_seen']
+                if current_time_in_zone > time_in_zone:
+                    time_in_zone = current_time_in_zone
+        return time_in_zone
+
+    def _get_bbox_color(self, time_in_zone: float) -> Tuple[int, int, int]:
+        """Determines the bounding box color based on the time spent in a zone."""
+        if time_in_zone > self.time_thresholds[1]:
+            return (0, 0, 255)  # Red
+        elif time_in_zone > self.time_thresholds[0]:
+            return (0, 165, 255)  # Orange
+        else:
+            return (0, 255, 0)  # Green
 
     def save_detection_log(self):
         """Saves the detection log in JSON format."""
