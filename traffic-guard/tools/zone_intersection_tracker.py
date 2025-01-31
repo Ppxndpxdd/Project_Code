@@ -449,7 +449,7 @@ class ZoneIntersectionTracker:
 
     def draw_arrows(self, frame: np.ndarray):
         """Draws arrows on the frame."""
-        for marker_id, arrow_data in self.arrows.items():
+        for marker_id, arrow_data in list(self.arrows.items()):
             polygon_points = arrow_data['polygon_points']
             line_points = arrow_data['line_points']
             color_polygon = (0, 255, 255)  # Yellow color for arrow zones
@@ -471,6 +471,32 @@ class ZoneIntersectionTracker:
                 cv2.putText(frame, f"Movement {marker_id}", tuple(line_points[0].astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_line, thickness)
             else:
                 logging.warning(f"Movement {marker_id} has insufficient points to draw.")
+
+    def _get_object_event(self, track_id: int) -> str:
+        """Returns the most recent relevant event for an object based on detection_log."""
+        obj = self.tracked_objects.get(track_id)
+        if not obj:
+            return 'unknown'
+
+        # Check if a severe event is already assigned
+        if obj.get('current_event') in ['no_entry', 'no_parking', 'wrong_way']:
+            return obj['current_event']
+
+        # Iterate through detection_log in reverse to find the latest events for the track_id
+        for entry in reversed(self.detection_log):
+            if entry.object_id == track_id:
+                if entry.event in ['no_entry', 'no_parking', 'wrong_way']:
+                    obj['current_event'] = entry.event
+                    return entry.event
+
+        # If no severe event found, look for the latest 'enter' or 'exit' event
+        for entry in reversed(self.detection_log):
+            if entry.object_id == track_id:
+                if entry.event in ['enter', 'exit']:
+                    obj['current_event'] = entry.event
+                    return entry.event
+
+        return 'unknown'
 
     def track_intersections(self, video_path: str, frame_to_edit: int):
         """Tracks objects in the video and detects zone intersections."""
@@ -704,7 +730,7 @@ class ZoneIntersectionTracker:
                     # Check for no_parking and no_entry events
                     self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp)
                     self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp)
-                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp)  # Add this line
+                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp)
 
                     # Determine color based on time in zone
                     time_in_zone = self._get_time_in_zone(track_id, timestamp)
@@ -715,7 +741,8 @@ class ZoneIntersectionTracker:
                     cv2.rectangle(frame, (x1, y1), (x2, y2), bbox_color, 2)
 
                     # Draw object ID, IoU, time in zone, and marker info
-                    label1 = f"ID: {track_id} IoU: {max_iou:.2f}"
+                    event = self._get_object_event(track_id)
+                    label1 = f"ID: {track_id} IoU: {max_iou:.2f} Event: {event}"
                     marker_info = intersecting_marker_id if intersecting_marker_id else 'N/A'
                     if isinstance(intersecting_marker_id, list):
                         marker_info = ', '.join(map(str, intersecting_marker_id))

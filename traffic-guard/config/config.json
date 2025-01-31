@@ -14,10 +14,11 @@
     "iou_threshold": 0.1,
     "total_duration": 5,
     "no_entry_zones": [
-        1,2,3
+        4,
+        5
     ],
     "no_parking_zones": [
-        1
+        2
     ],
     "no_parking_duration": 5,
     "mqtt_broker": "f8b13f71.ala.asia-southeast1.emqxsl.com",
@@ -25,7 +26,7 @@
     "mqtt_username": "PP",
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
-    "edge_id": "es54",
+    "edge_id": "Fjhp",
     "incident_topic": "incident",
     "heartbeat_topic": "heartbeat",
     "subscribe_topics": [
