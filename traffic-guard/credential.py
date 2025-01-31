@@ -4,7 +4,7 @@ import random
 import string
 import logging
 
-def get_edge_id(length=6):
+def get_edge_id(length=4):
     characters = string.ascii_letters + string.digits
     edge_id = ''.join(random.choices(characters, k=length))
     return edge_id

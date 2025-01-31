@@ -3,6 +3,7 @@ import json
 import logging
 import numpy as np
 import os
+import yt_dlp
 from typing import Any, Dict, List, Tuple
 
 class MarkerZone:
@@ -13,23 +14,35 @@ class MarkerZone:
         self.video_source = config['video_source']
         self.frame_to_edit = config['frame_to_edit']
         self.mask_json_path = config.get('mask_json_path', None)
-        self.cap = cv2.VideoCapture(self.video_source)
+        
+        # Handle YouTube URLs
+        if self.video_source.startswith(('http://', 'https://')):
+            # Extract direct video URL using yt-dlp
+            ydl_opts = {'format': 'bestvideo[ext=mp4]/best', 'quiet': True}
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(self.video_source, download=False)
+                    self.video_source = info['url']
+            except Exception as e:
+                logging.error(f"Failed to process YouTube URL: {e}")
+                self.video_source = None
+
+        # Initialize video capture
+        self.cap = cv2.VideoCapture(self.video_source) if self.video_source else None
         self.drawing = False
-        self.current_tool = 'zone'  # Default tool
+        self.current_tool = 'zone'
         self.arrow_points = []
         self.current_polygon: List[Tuple[int, int]] = []
         self.markers: Dict[int, Dict[str, Any]] = {}
         self.marker_id = 1
+        self.target_frame = None  # Ensure attribute exists even if initialization fails
 
-        # Combined mask positions loaded from file
-        self.mask_positions = []
-
-        # Ensure mask_json_path is defined
+        # Load mask positions
         if not self.mask_json_path:
             script_dir = os.path.dirname(os.path.abspath(__file__))
             self.mask_json_path = os.path.join(script_dir, '..', 'config', 'marker_positions.json')
-
-        # Load if exists
+        
+        self.mask_positions = []
         if os.path.exists(self.mask_json_path):
             try:
                 with open(self.mask_json_path, 'r') as f:
@@ -37,18 +50,16 @@ class MarkerZone:
             except Exception as e:
                 logging.error(f"Error loading mask positions: {e}")
 
-        if not self.cap.isOpened():
-            logging.error(f"Cannot open video source '{self.video_source}'.")
-            return
+        # Validate video capture and frame
+        if self.cap and self.cap.isOpened():
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_to_edit)
+            ret, self.target_frame = self.cap.read()
+            if not ret:
+                logging.error("Could not read the frame.")
+        else:
+            logging.error(f"Failed to open video source: {self.video_source}")
 
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_to_edit)
-        ret, self.target_frame = self.cap.read()
-        if not ret:
-            logging.error("Could not read the frame.")
-            return
-
-        # Initialize dictionaries
-        self.markers = {}
+        # Initialize data structures
         self.zones = {}
         self.arrow_zones = {}
         self.arrows = {}
@@ -57,9 +68,6 @@ class MarkerZone:
         # Visual properties
         self.highlight_radius = config.get('highlight_radius', 10)
         self.point_radius = config.get('point_radius', 5)
-        self.line_threshold = config.get('line_threshold', 10)
-        self.selection_threshold = config.get('selection_threshold', 10)
-
         self.undo_stack = []
         self.redo_stack = []
 

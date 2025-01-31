@@ -71,6 +71,9 @@ class ZoneIntersectionTracker:
         # Load the model with the specified device
         self.model = YOLO(model_path).to(self.device)
 
+        # Define vehicle class IDs (adjust based on your YOLO model)
+        self.vehicle_class_ids = [2, 3, 5, 7]  # Example: car, motorcycle, bus, truck
+
         # Load total duration and compute time thresholds
         self.total_duration = config.get('total_duration', 5)  # Default to 5 seconds if not specified
         # Calculate time thresholds for three colors
@@ -95,8 +98,8 @@ class ZoneIntersectionTracker:
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
 
-        # Initialize MQTT subscriber
-        self.mqtt_subscriber = MqttSubscriber(config)
+        # Initialize MQTT subscriber and pass the MqttPublisher instance
+        self.mqtt_subscriber = MqttSubscriber(config, self.mqtt_publisher)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/create', self.on_create_marker)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/update', self.on_update_marker)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/delete', self.on_delete_marker)
@@ -471,6 +474,36 @@ class ZoneIntersectionTracker:
 
     def track_intersections(self, video_path: str, frame_to_edit: int):
         """Tracks objects in the video and detects zone intersections."""
+        # Check if the input is a YouTube URL
+        if video_path.startswith(('http://', 'https://')):
+            try:
+                import yt_dlp
+            except ImportError:
+                raise ImportError("Please install yt-dlp to handle YouTube URLs: pip install yt-dlp")
+
+            # Extract the best video stream URL using yt-dlp
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]/best',
+                'quiet': True,
+                'no_warnings': True,
+            }
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(video_path, download=False)
+                    if 'url' in info:
+                        video_url = info['url']
+                    else:
+                        # Fallback to the first available format
+                        formats = info.get('formats', [])
+                        if not formats:
+                            raise ValueError("No playable formats found for the YouTube URL.")
+                        video_url = formats[0]['url']
+                    video_path = video_url
+            except Exception as e:
+                logging.error(f"Failed to process YouTube URL: {e}")
+                return
+
+        # Proceed with OpenCV VideoCapture
         cap = cv2.VideoCapture(video_path)
         if not cap.isOpened():
             logging.error(f"Could not open video source '{video_path}'.")
@@ -479,12 +512,16 @@ class ZoneIntersectionTracker:
         self.fps = cap.get(cv2.CAP_PROP_FPS)
         frame_time = 1 / self.fps
 
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
+        # Attempt to seek only if it's not a live stream
+        if frame_to_edit > 0 and not video_path.startswith(('rtsp://', 'rtmp://')):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_to_edit)
+        
         ret, frame = cap.read()
         if not ret:
             logging.error("Could not read the frame.")
             return
 
+        # Rest of the original method remains unchanged
         self.load_zones()
         self.load_arrows()
 
@@ -513,6 +550,10 @@ class ZoneIntersectionTracker:
 
                 for i, (bbox, conf, class_id, track_id) in enumerate(
                         zip(boxes.xyxy, boxes.conf.cpu().numpy(), boxes.cls.cpu().numpy(), track_ids)):
+                    # Filter out non-vehicle objects
+                    if int(class_id) not in self.vehicle_class_ids:
+                        continue
+
                     bbox_np = bbox.cpu().numpy()
                     track_id = int(track_id)
 
@@ -600,10 +641,12 @@ class ZoneIntersectionTracker:
                         if intersects_movement and not marker_entry_exists:
                             # Object just entered the movement zone
                             entry = {
-                                'marker_id': int(marker_id),
-                                'first_seen': float(timestamp),
-                                'last_seen': None
-                            }
+                                    'marker_id': int(marker_id),
+                                    'type': 'movement',  # Add type
+                                    'first_seen': float(timestamp),
+                                    'last_seen': None,
+                                    'trajectory': []  # Initialize trajectory
+                                }
                             self.tracked_objects[track_id]['marker_entries'].append(entry)
 
                             # Prepare entry message
@@ -622,6 +665,18 @@ class ZoneIntersectionTracker:
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
                             self.mqtt_publisher.send_incident(detection_entry)
+                        
+                        elif intersects_movement:
+                            # Update trajectory for existing entry
+                            for entry in self.tracked_objects[track_id]['marker_entries']:
+                                if entry['marker_id'] == marker_id and entry['last_seen'] is None:
+                                    # Append current position (center of bbox)
+                                    x_center = (bbox_np[0] + bbox_np[2]) / 2
+                                    y_center = (bbox_np[1] + bbox_np[3]) / 2
+                                    entry['trajectory'].append((x_center, y_center))
+                                    # Keep only the last 10 points to avoid memory issues
+                                    if len(entry['trajectory']) > 10:
+                                        entry['trajectory'] = entry['trajectory'][-10:]
                             
                         elif not intersects_movement and marker_entry_exists:
                             # Object just exited the movement zone
@@ -649,6 +704,7 @@ class ZoneIntersectionTracker:
                     # Check for no_parking and no_entry events
                     self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp)
                     self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp)
+                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp)  # Add this line
 
                     # Determine color based on time in zone
                     time_in_zone = self._get_time_in_zone(track_id, timestamp)
@@ -660,7 +716,10 @@ class ZoneIntersectionTracker:
 
                     # Draw object ID, IoU, time in zone, and marker info
                     label1 = f"ID: {track_id} IoU: {max_iou:.2f}"
-                    label2 = f"Time: {time_in_zone:.1f}s Marker: {intersecting_marker_id if intersecting_marker_id else 'N/A'}"
+                    marker_info = intersecting_marker_id if intersecting_marker_id else 'N/A'
+                    if isinstance(intersecting_marker_id, list):
+                        marker_info = ', '.join(map(str, intersecting_marker_id))
+                    label2 = f"Time: {time_in_zone:.1f}s Marker: {marker_info}"
                     cv2.putText(frame, label1, (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
                     cv2.putText(frame, label2, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
 
@@ -725,6 +784,62 @@ class ZoneIntersectionTracker:
                 self.detection_log.append(detection_entry)
                 self.save_detection_log()
                 self.mqtt_publisher.send_incident(detection_entry)
+                
+                
+    def calculate_direction(self, start_point, end_point):
+        """Calculate the unit vector for the direction."""
+        direction = np.array(end_point) - np.array(start_point)
+        norm = np.linalg.norm(direction)
+        if norm == 0:
+            return direction  # Avoid division by zero
+        return direction / norm
+
+    def is_wrong_way(self, car_trajectory, polyline):
+        """
+        Determine if a car is going the wrong way by comparing its trajectory to the polyline direction.
+        """
+        if len(polyline) < 2 or len(car_trajectory) < 2:
+            return False  # Not enough points
+        polyline_direction = self.calculate_direction(polyline[0], polyline[-1])
+        car_direction = self.calculate_direction(car_trajectory[0], car_trajectory[-1])
+        dot_product = np.dot(car_direction, polyline_direction)
+        return dot_product < 0
+    
+    def _check_wrong_way(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+        """Checks if a vehicle is moving in the wrong direction within a movement zone."""
+        for marker_entry in self.tracked_objects[track_id]['marker_entries']:
+            # Check only active movement markers
+            if marker_entry.get('type') == 'movement' and marker_entry['last_seen'] is None:
+                marker_id = marker_entry['marker_id']
+                arrow_data = self.arrows.get(marker_id)
+                if not arrow_data or 'line_points' not in arrow_data:
+                    continue
+                line_points = arrow_data['line_points']
+                if len(line_points) < 2:
+                    continue  # Invalid arrow
+                # Get the vehicle's trajectory
+                trajectory = marker_entry.get('trajectory', [])
+                if len(trajectory) < 2:
+                    continue  # Not enough trajectory points
+                # Check direction
+                if self.is_wrong_way(trajectory, line_points):
+                    logging.info(f"Vehicle {track_id} is going the wrong way in marker {marker_id}")
+                    detection_entry = DetectionEntry(
+                        object_id=track_id,
+                        class_id=int(class_id),
+                        confidence=float(conf),
+                        marker_id=int(marker_id),
+                        first_seen=float(timestamp),
+                        last_seen=None,
+                        duration=None,
+                        event='wrong_way',
+                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                    )
+                    self.detection_log.append(detection_entry)
+                    self.save_detection_log()
+                    self.mqtt_publisher.send_incident(detection_entry)
+                    # Prevent duplicate logging
+                    marker_entry['wrong_way_logged'] = True
 
     def _get_time_in_zone(self, track_id: int, timestamp: float) -> float:
         """Calculates the time an object has spent in any zone."""

@@ -16,8 +16,8 @@ if __name__ == "__main__":
         config = json.load(config_file)
 
     # Initialize MQTT Subscriber
-    mqtt_subscriber = MqttSubscriber(config)
     mqtt_publisher = MqttPublisher(config)
+    mqtt_subscriber = MqttSubscriber(config, mqtt_publisher)
 
     # 1. Run MaskTool to define zones on the selected frame
     mask_tool = MarkerZone(config)
