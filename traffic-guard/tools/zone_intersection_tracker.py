@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import threading
+import screeninfo
 from collections import defaultdict
 from typing import Dict, Any, Tuple, List
 import cv2
@@ -499,7 +500,11 @@ class ZoneIntersectionTracker:
         return 'unknown'
 
     def track_intersections(self, video_path: str, frame_to_edit: int):
-        """Tracks objects in the video and detects zone intersections."""
+        # Get screen dimensions
+        screen = screeninfo.get_monitors()[0]
+        screen_width = screen.width
+        screen_height = screen.height
+
         # Check if the input is a YouTube URL
         if video_path.startswith(('http://', 'https://')):
             try:
@@ -547,17 +552,25 @@ class ZoneIntersectionTracker:
             logging.error("Could not read the frame.")
             return
 
-        # Rest of the original method remains unchanged
-        self.load_zones()
-        self.load_arrows()
+        # Resize frame to fit screen
+        frame_height, frame_width = frame.shape[:2]
+        scale_width = screen_width / frame_width
+        scale_height = screen_height / frame_height
+        scale = min(scale_width, scale_height)
+        new_width = int(frame_width * scale)
+        new_height = int(frame_height * scale)
 
-        frame_id = frame_to_edit
+        frame_id = 0
 
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
+            # Resize frame to fit screen
+            frame = cv2.resize(frame, (new_width, new_height))
+
+            # Rest of the tracking logic remains unchanged
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
             results = self.model.track(frame, verbose=False, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
 

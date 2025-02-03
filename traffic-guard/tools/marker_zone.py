@@ -1,23 +1,26 @@
 import cv2
 import json
 import logging
+import screeninfo
 import numpy as np
 import os
 import yt_dlp
 from typing import Any, Dict, List, Tuple
 
 class MarkerZone:
-    """Interactive tool for defining both polygonal zones and arrows on a video frame."""
-
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.video_source = config['video_source']
         self.frame_to_edit = config['frame_to_edit']
         self.mask_json_path = config.get('mask_json_path', None)
-        
+
+        # Get screen dimensions
+        screen = screeninfo.get_monitors()[0]
+        self.screen_width = screen.width
+        self.screen_height = screen.height
+
         # Handle YouTube URLs
         if self.video_source.startswith(('http://', 'https://')):
-            # Extract direct video URL using yt-dlp
             ydl_opts = {'format': 'bestvideo[ext=mp4]/best', 'quiet': True}
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -35,7 +38,7 @@ class MarkerZone:
         self.current_polygon: List[Tuple[int, int]] = []
         self.markers: Dict[int, Dict[str, Any]] = {}
         self.marker_id = 1
-        self.target_frame = None  # Ensure attribute exists even if initialization fails
+        self.target_frame = None
 
         # Load mask positions
         if not self.mask_json_path:
@@ -56,6 +59,9 @@ class MarkerZone:
             ret, self.target_frame = self.cap.read()
             if not ret:
                 logging.error("Could not read the frame.")
+            else:
+                # Resize frame to fit screen
+                self.target_frame = self.resize_frame_to_screen(self.target_frame)
         else:
             logging.error(f"Failed to open video source: {self.video_source}")
 
@@ -70,6 +76,16 @@ class MarkerZone:
         self.point_radius = config.get('point_radius', 5)
         self.undo_stack = []
         self.redo_stack = []
+
+    def resize_frame_to_screen(self, frame: np.ndarray) -> np.ndarray:
+        """Resizes the frame to fit the screen while maintaining aspect ratio."""
+        frame_height, frame_width = frame.shape[:2]
+        scale_width = self.screen_width / frame_width
+        scale_height = self.screen_height / frame_height
+        scale = min(scale_width, scale_height)
+        new_width = int(frame_width * scale)
+        new_height = int(frame_height * scale)
+        return cv2.resize(frame, (new_width, new_height))
 
     def load_markers(self):
         """Loads markers from mask_positions.json and populates zones and arrows."""
@@ -113,10 +129,8 @@ class MarkerZone:
             elif key == ord('s'):
                 self.save_mask_positions()
             elif key == ord('u'):
-                # Handle undo
                 self.handle_undo()
             elif key == ord('r'):
-                # Handle redo
                 self.handle_redo()
             elif key == 27 or key == ord('q'):
                 break
