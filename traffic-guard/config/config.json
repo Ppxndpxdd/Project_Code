@@ -1,6 +1,6 @@
 {
     "video_source": "traffic-guard/src/stream2.mp4",
-    "rtsp_url": "rtsp://updated_stream_url",
+    "rtsp_url": "",
     "model_path": "traffic-guard/model/yolo11m.pt",
     "frame_to_edit": 1,
     "mask_json_path": "traffic-guard/config/marker_positions.json",
