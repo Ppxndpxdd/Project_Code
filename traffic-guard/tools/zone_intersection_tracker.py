@@ -20,22 +20,30 @@ class ZoneIntersectionTracker:
 
     def __init__(self, config: Dict[str, Any], show_result: bool = True):
         self.config = config
+
+        # Load rule configuration from rule.json.
+        # Values from rule.json will override config settings if provided.
+        self.rule_config = self.load_rule_config()
+        # Get rule-based settings with fallback to original config.
+        self.no_entry_zones = self.rule_config.get("no_entry_zones", config.get("no_entry_zones", []))
+        self.no_parking_duration = self.rule_config.get("no_parking_duration", config.get("no_parking_duration", 60))
+        self.wrong_way_config = self.rule_config.get("wrong_way", config.get("wrong_way", {}))
+        self.total_duration = self.rule_config.get("total_duration", config.get("total_duration", 5))
+        
         model_path = config['model_path']
         mask_json_path = config['mask_json_path']
-        
         edge_id = config.get('edge_id', 'default_id')
         logging.info(f"ZoneIntersectionTracker initialized with edge_id: {edge_id}")
         
         self.tracker_config = config.get('tracker_config', 'bytetrack.yaml')
         self.show_result = show_result
 
-        # Handle model_path
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file '{model_path}' not found.")
-        # Handle mask_json_path
         if not os.path.exists(mask_json_path):
             raise FileNotFoundError(f"Mask positions file '{mask_json_path}' not found.")
-        self.mask_json_path = config['mask_json_path']
+        
+        self.mask_json_path = mask_json_path
         self.load_mask_positions()
 
         self.zones = {}
@@ -45,23 +53,16 @@ class ZoneIntersectionTracker:
         self.object_zone_timers = defaultdict(lambda: defaultdict(float))
         self.lock = threading.Lock()
 
-        # Initialize marker dictionaries
-        self.zones = {}
-        self.arrows = {}
-        
-        # Load markers
         self.load_zones()
         self.load_arrows()
 
-        self.fps = 30  # Default FPS, update this in track_intersections method
+        self.fps = 30  # Default FPS
 
-        # Set output directory and file
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.output_dir = os.path.join(script_dir, config.get('output_dir', 'output'))
         os.makedirs(self.output_dir, exist_ok=True)
         self.output_file = os.path.join(self.output_dir, config.get('output_file', 'detection_log.json'))
 
-        # Set device
         if torch.cuda.is_available():
             self.device = 'cuda'
             logging.info("Using GPU for inference.")
@@ -69,21 +70,14 @@ class ZoneIntersectionTracker:
             self.device = 'cpu'
             logging.info("Using CPU for inference.")
 
-        # Load the model with the specified device
         self.model = YOLO(model_path).to(self.device)
+        self.vehicle_class_ids = [2, 3, 5, 7]
 
-        # Define vehicle class IDs (adjust based on your YOLO model)
-        self.vehicle_class_ids = [2, 3, 5, 7]  # Example: car, motorcycle, bus, truck
-
-        # Load total duration and compute time thresholds
-        self.total_duration = config.get('total_duration', 5)  # Default to 5 seconds if not specified
-        # Calculate time thresholds for three colors
         self.time_thresholds = [
-            2 * self.total_duration / 3,   # Threshold for green to orange
-            self.total_duration            # Threshold for orange to red
+            2 * self.total_duration / 3,
+            self.total_duration
         ]
 
-        # Initialize MQTT publisher
         mqtt_config = {
             'mqtt_broker': config['mqtt_broker'],
             'mqtt_port': config['mqtt_port'],
@@ -98,16 +92,44 @@ class ZoneIntersectionTracker:
             'incident_info_topic': f'{edge_id}/incident'
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
-
-        # Initialize MQTT subscriber and pass the MqttPublisher instance
         self.mqtt_subscriber = MqttSubscriber(config, self.mqtt_publisher)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/create', self.on_create_marker)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/update', self.on_update_marker)
         self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/delete', self.on_delete_marker)
 
-        # Load event-specific configurations
-        self.no_entry_zones = config.get('no_entry_zones', [])
-        self.no_parking_duration = config.get('no_parking_duration', 60)  # in seconds
+    def load_rule_config(self) -> Dict[str, Any]:
+        """Loads rule configuration from the rule.json file."""
+        rule_config_path = self.config.get('rule_config_path', 'traffic-guard/config/rule.json')
+        if not os.path.exists(rule_config_path):
+            logging.error(f"Rule config file not found: {rule_config_path}")
+            return {}
+        try:
+            with open(rule_config_path, 'r') as f:
+                rule_config = json.load(f)
+            logging.info("Rule configuration loaded successfully.")
+            return rule_config
+        except Exception as e:
+            logging.error(f"Failed to load rule config: {e}")
+            return {}
+    
+    def get_rule_for_marker(self, marker_id: int, event: str) -> Dict[str, Any]:
+        """Retrieves rule info from rule.json based on marker_id and event."""
+        # Convert underscores to spaces for both event and rule name:
+        event_str = event.lower().replace('_', ' ')
+        rules = self.rule_config.get('rules', [])
+        for rule in rules:
+            rule_name_str = rule.get('name', '').lower().replace('_', ' ')
+            for applied in rule.get('ruleApplied', []):
+                if applied.get('markerId') == marker_id:
+                    # Now check if the rule name is contained in the event or vice versa
+                    if rule_name_str in event_str or event_str in rule_name_str:
+                        return {
+                            "rule_name": rule.get("name"),
+                            "description": rule.get("desc"),
+                            "jsonParams": json.loads(applied.get("jsonParams", "{}")),
+                            "applied_id": applied.get("id")
+                        }
+        return {}
 
     def load_mask_positions(self):
         """Loads mask positions from the JSON file."""
@@ -437,16 +459,34 @@ class ZoneIntersectionTracker:
         return intersects, iou
 
     def draw_zones(self, frame: np.ndarray):
-        """Draws zones on the frame."""
+        """Draws zones on the frame and displays assigned rule text, including id_rule_applied."""
         for marker_id, polygon in self.zones.items():
-            color = (0, 255, 0)  # Green color for zones
-            thickness = 2
-            if polygon.shape[0] >= 3:
-                cv2.polylines(frame, [polygon.astype(np.int32)], isClosed=True, color=color, thickness=thickness)
-                centroid = np.mean(polygon, axis=0).astype(int)
-                cv2.putText(frame, f"Zone {marker_id}", tuple(centroid), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, thickness)
+            if polygon is None or len(polygon) == 0:
+                continue
+
+            pts = np.array(polygon, np.int32).reshape((-1, 1, 2))
+            cv2.polylines(frame, [pts], isClosed=True, color=(0, 255, 0), thickness=2)
+
+            # Compute the centroid for text placement
+            pts_np = np.array(polygon, dtype=np.float32)
+            cx = int(np.mean(pts_np[:, 0]))
+            cy = int(np.mean(pts_np[:, 1]))
+
+            # Try to get id_rule_applied from known events
+            possible_events = ['no entry', 'no parking', 'wrong way']
+            applied_ids = []
+            for ev in possible_events:
+                rule_info = self.get_rule_for_marker(marker_id, ev)
+                if rule_info.get("applied_id"):
+                    applied_ids.append(str(rule_info.get("applied_id")))
+
+            if applied_ids:
+                applied_ids_str = ','.join(applied_ids)
+                label = f"Marker {marker_id} | Rule IDs: {applied_ids_str}"
             else:
-                logging.warning(f"Zone {marker_id} has insufficient points to draw.")
+                label = f"Marker {marker_id} | No ruleApplied"
+
+            cv2.putText(frame, label, (cx, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     def draw_arrows(self, frame: np.ndarray):
         """Draws arrows on the frame."""
@@ -785,15 +825,20 @@ class ZoneIntersectionTracker:
     def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
         """Checks if an object has exceeded the no_parking duration in a zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
+            marker_id = marker_entry.get('marker_id')
+            if marker_id is None:
+                continue
             if marker_entry['last_seen'] is None:
-                time_in_zone = timestamp - marker_entry['first_seen']
+                time_in_zone = self._get_time_in_zone(track_id, timestamp)
                 if time_in_zone > self.no_parking_duration and 'threshold_logged' not in marker_entry:
                     logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_entry['marker_id']}")
+                    rule_info = self.get_rule_for_marker(marker_id, 'no parking')
                     detection_entry = DetectionEntry(
                         object_id=track_id,
                         class_id=int(class_id),
                         confidence=float(conf),
-                        marker_id=int(marker_entry['marker_id']),
+                        marker_id=int(marker_id),
+                        id_rule_applied=rule_info.get("applied_id"),
                         first_seen=float(marker_entry['first_seen']),
                         last_seen=None,
                         duration=float(time_in_zone),
@@ -808,26 +853,30 @@ class ZoneIntersectionTracker:
     def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
         """Checks if an object is in a no_entry zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
-            if marker_entry['marker_id'] in self.no_entry_zones and marker_entry['last_seen'] is None:
+            marker_id = marker_entry.get('marker_id')        
+            if marker_id is None:
+                continue
+            if marker_id in self.no_entry_zones and marker_entry['last_seen'] is None:
                 logging.info(f"Object {track_id} is in a no_entry zone: {marker_entry['marker_id']}")
+                rule_info = self.get_rule_for_marker(marker_id, 'no entry')                
                 detection_entry = DetectionEntry(
                     object_id=track_id,
                     class_id=int(class_id),
                     confidence=float(conf),
-                    marker_id=int(marker_entry['marker_id']),
+                    marker_id=int(marker_id),
+                    id_rule_applied=rule_info.get("applied_id"),
                     first_seen=float(timestamp),
                     last_seen=None,
                     duration=None,
                     event='no_entry',
-                    bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                    bbox=tuple(map(float, bbox_np))
                 )
                 self.detection_log.append(detection_entry)
                 self.save_detection_log()
                 self.mqtt_publisher.send_incident(detection_entry)
                 
-                
     def calculate_direction(self, start_point, end_point):
-        """Calculate the unit vector for the direction."""
+        """Calculate the direction vector from start to end point."""
         direction = np.array(end_point) - np.array(start_point)
         norm = np.linalg.norm(direction)
         if norm == 0:
@@ -837,48 +886,86 @@ class ZoneIntersectionTracker:
     def is_wrong_way(self, car_trajectory, polyline):
         """
         Determine if a car is going the wrong way by comparing its trajectory to the polyline direction.
+        Returns 'left', 'right', 'opposite', or None if no violation.
         """
         if len(polyline) < 2 or len(car_trajectory) < 2:
-            return False  # Not enough points
-        polyline_direction = self.calculate_direction(polyline[0], polyline[-1])
-        car_direction = self.calculate_direction(car_trajectory[0], car_trajectory[-1])
-        dot_product = np.dot(car_direction, polyline_direction)
-        return dot_product < 0
-    
+            return None  # Not enough points
+
+        # Calculate arrow direction from polyline points
+        arrow_start = np.array(polyline[0])
+        arrow_end = np.array(polyline[-1])
+        arrow_vector = arrow_end - arrow_start
+        arrow_norm = np.linalg.norm(arrow_vector)
+        if arrow_norm == 0:
+            return None  # Invalid arrow direction
+        arrow_dir = arrow_vector / arrow_norm
+
+        # Calculate vehicle direction from trajectory
+        vehicle_start = np.array(car_trajectory[0])
+        vehicle_end = np.array(car_trajectory[-1])
+        vehicle_vector = vehicle_end - vehicle_start
+        vehicle_norm = np.linalg.norm(vehicle_vector)
+        if vehicle_norm == 0:
+            return None  # Vehicle not moving
+        vehicle_dir = vehicle_vector / vehicle_norm
+
+        # Calculate dot and cross products
+        dot = np.dot(arrow_dir, vehicle_dir)
+        cross = np.cross(arrow_dir, vehicle_dir)
+
+        # Check direction violations
+        if dot < -0.7:  # ~135 degrees threshold for opposite direction
+            return 'opposite'
+        elif dot < 0.7:  # ~45 degrees threshold for side directions
+            if cross > 0:
+                return 'left'
+            else:
+                return 'right'
+        return None
+
     def _check_wrong_way(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
         """Checks if a vehicle is moving in the wrong direction within a movement zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
-            # Check only active movement markers
             if marker_entry.get('type') == 'movement' and marker_entry['last_seen'] is None:
                 marker_id = marker_entry['marker_id']
+                if marker_id is None:
+                    continue
+                
+                # Get the relevant rule info from the rule.json config
+                rule_info = self.get_rule_for_marker(marker_id, 'wrong way')
+                if rule_info:
+                    logging.info(f"Applying rule: {rule_info['rule_name']} for marker {marker_id} with config {rule_info['jsonParams']}")
+                
                 arrow_data = self.arrows.get(marker_id)
                 if not arrow_data or 'line_points' not in arrow_data:
                     continue
                 line_points = arrow_data['line_points']
                 if len(line_points) < 2:
-                    continue  # Invalid arrow
-                # Get the vehicle's trajectory
+                    continue
+                
                 trajectory = marker_entry.get('trajectory', [])
                 if len(trajectory) < 2:
-                    continue  # Not enough trajectory points
-                # Check direction
-                if self.is_wrong_way(trajectory, line_points):
-                    logging.info(f"Vehicle {track_id} is going the wrong way in marker {marker_id}")
+                    continue
+
+                violation = self.is_wrong_way(trajectory, line_points)
+                if violation:
+                    event_type = f'wrong_way_{violation}' if violation in ['left', 'right'] else 'wrong_way'
+                    
                     detection_entry = DetectionEntry(
                         object_id=track_id,
                         class_id=int(class_id),
                         confidence=float(conf),
                         marker_id=int(marker_id),
+                        id_rule_applied=rule_info.get("applied_id"),
                         first_seen=float(timestamp),
                         last_seen=None,
                         duration=None,
-                        event='wrong_way',
-                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                        event=event_type,
+                        bbox=tuple(map(float, bbox_np))
                     )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
                     self.mqtt_publisher.send_incident(detection_entry)
-                    # Prevent duplicate logging
                     marker_entry['wrong_way_logged'] = True
 
     def _get_time_in_zone(self, track_id: int, timestamp: float) -> float:

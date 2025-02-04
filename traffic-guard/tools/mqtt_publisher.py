@@ -50,8 +50,14 @@ class MqttPublisher:
         if not payload:
             logging.error("Payload is empty. Incident not sent.")
             return
-        
-        # Generate the incident topic dynamically
+
+        # Ensure id_rule_applied gets added if ruleApplied exists and is a non-empty list
+        rule_applied = payload.get("ruleApplied")
+        if isinstance(rule_applied, list) and rule_applied:
+            payload["id_rule_applied"] = rule_applied[0].get("id")
+        else:
+            logging.debug("No valid ruleApplied found; id_rule_applied not added.")
+
         topic = self.get_incident_topic()
         logging.debug(f"Sending incident payload: {payload} to topic: {topic}")
         try:

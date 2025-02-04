@@ -1,0 +1,61 @@
+{
+    "rules": [
+      {
+        "id": 1,
+        "name": "No Entry",
+        "markerType": "zone",
+        "status": "active",
+        "jsonParams": "{\"confidence_threshold\": 0.5}",
+        "ruleApplied": [
+          {
+            "id": 1,
+            "ruleId": 1,
+            "markerId": 5,
+            "jsonParams": "{\"threshold\": 0.5}"
+          },
+          {
+            "id": 2,
+            "ruleId": 1,
+            "markerId": 10,
+            "jsonParams": "{\"threshold\": 0.5}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "No Parking",
+        "markerType": "zone",
+        "status": "active",
+        "jsonParams": "{\"duration\": 5.0}",
+        "ruleApplied": [
+          {
+            "id": 3,
+            "ruleId": 2,
+            "markerId": 2,
+            "jsonParams": "{\"duration\": 5.0}"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Wrong Way",
+        "markerType": "movement",
+        "status": "active",
+        "jsonParams": "{\"angle_threshold\": 0.7, \"sub_rules\": {\"opposite\": {\"enabled\": true, \"threshold\": -0.7}, \"left\": {\"enabled\": true, \"threshold\": 0.3}, \"right\": {\"enabled\": true, \"threshold\": 0.4}}}",
+        "ruleApplied": [
+          {
+            "id": 4,
+            "ruleId": 3,
+            "markerId": 5,
+            "jsonParams": "{\"rule\": \"opposite\"}"
+          },
+          {
+            "id": 5,
+            "ruleId": 3,
+            "markerId": 10,
+            "jsonParams": "{\"rule\": \"left\"}"
+          }
+        ]
+      }
+    ]
+  }

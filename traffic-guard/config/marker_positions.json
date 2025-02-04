@@ -24,7 +24,8 @@
                 681,
                 347
             ]
-        ]
+        ],
+        "rule": "no_entry"
     },
     {
         "marker_id": 2,
@@ -51,7 +52,8 @@
                 1250,
                 487
             ]
-        ]
+        ],
+        "rule": "no_parking"
     },
     {
         "marker_id": 3,
@@ -86,7 +88,8 @@
                 826,
                 640
             ]
-        ]
+        ],
+        "rule": "no_entry"
     },
     {
         "marker_id": 5,
@@ -113,7 +116,8 @@
                 968,
                 790
             ]
-        ]
+        ],
+        "rule": "no_entry"
     },
     {
         "marker_id": 6,
@@ -158,7 +162,8 @@
                 1593,
                 273
             ]
-        ]
+        ],
+        "rule": "wrong_way"
     },
     {
         "marker_id": 7,
@@ -207,7 +212,8 @@
                 1603,
                 236
             ]
-        ]
+        ],
+        "rule": "wrong_way"
     },
     {
         "marker_id": 8,
@@ -256,7 +262,8 @@
                 1598,
                 195
             ]
-        ]
+        ],
+        "rule": "wrong_way"
     },
     {
         "marker_id": 9,
@@ -297,7 +304,8 @@
                 896,
                 321
             ]
-        ]
+        ],
+        "rule": "wrong_way"
     },
     {
         "marker_id": 10,
@@ -342,7 +350,8 @@
                 1289,
                 1041
             ]
-        ]
+        ],
+        "rule": "wrong_way"
     },
     {
         "marker_id": 4,
@@ -369,6 +378,7 @@
                 599,
                 823
             ]
-        ]
+        ],
+        "rule": "no_parking"
     }
 ]
