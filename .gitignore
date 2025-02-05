@@ -50,3 +50,6 @@ traffic-guard/model/yolov10b_ft_local.pt
 traffic-guard/model/yolov10b_ft_ocr.pt
 traffic-guard/src/ch6_1.mp4
 output_image.png
+output.f234.mp4
+output.f270.mp4
+traffic-guard/src/stream.mp4

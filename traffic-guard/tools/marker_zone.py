@@ -263,11 +263,95 @@ class MarkerZone:
                 self.handle_selection(x, y)
             elif event == cv2.EVENT_RBUTTONDOWN:
                 if self.selected_marker_id is not None:
-                    rule = input(f"Enter rule for marker {self.selected_marker_id}: ")
-                    self.markers[self.selected_marker_id]['rule'] = rule
-                    for i, m in enumerate(self.mask_positions):
-                        if m.get('marker_id') == self.selected_marker_id:
-                            self.mask_positions[i]['rule'] = rule
+                    import os, json
+                    rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+                    with open(rule_config_path, 'r') as f:
+                        rule_config = json.load(f)
+
+                    print("Available Rules:")
+                    for rule in rule_config.get("rules", []):
+                        print(f"ID: {rule.get('id')} - Name: {rule.get('name')}")
+                    rule_input = input(f"Enter rule id for marker {self.selected_marker_id} from the list above: ")
+                    try:
+                        rule_id = int(rule_input)
+                    except ValueError:
+                        logging.error("Invalid rule id entered. Must be an integer.")
+                        return
+
+                    matched_rule = None
+                    for rule in rule_config.get("rules", []):
+                        if rule.get("id") == rule_id:
+                            matched_rule = rule
+                            break
+
+                    if matched_rule:
+                        # If user picked the 'Wrong Way' rule, only allow certain choices
+                        if matched_rule.get("name") == "Wrong Way":
+                            direction_choice = input("Select direction from [opposite, left, right]: ")
+                            while direction_choice not in ["opposite", "left", "right"]:
+                                direction_choice = input("Invalid choice. Must be one of [opposite, left, right]: ")
+                            updated_params = {"sub_rules": direction_choice}
+                        else:
+                            # Otherwise, proceed with default or user-provided JSON param updates
+                            try:
+                                default_params = json.loads(matched_rule.get("jsonParams", "{}"))
+                            except Exception as e:
+                                logging.error(f"Error parsing default JSON parameters: {e}")
+                                default_params = {}
+                            updated_params = {}
+                            if default_params:
+                                print("Define new parameters. Press Enter to keep current value.")
+                                for key, value in default_params.items():
+                                    user_val = input(f"Parameter '{key}' (default {value}): ")
+                                    if user_val.strip() == "":
+                                        updated_params[key] = value
+                                    else:
+                                        try:
+                                            if isinstance(value, int):
+                                                updated_params[key] = int(user_val)
+                                            elif isinstance(value, float):
+                                                updated_params[key] = float(user_val)
+                                            else:
+                                                updated_params[key] = user_val
+                                        except:
+                                            updated_params[key] = user_val
+                            else:
+                                # if no default parameters exist, allow a raw JSON input
+                                json_input = input("Enter JSON parameters for the rule (e.g., {\"key\": \"value\"}): ")
+                                try:
+                                    updated_params = json.loads(json_input) if json_input.strip() != "" else {}
+                                except Exception as e:
+                                    logging.error(f"Invalid JSON parameters: {e}")
+                                    updated_params = {}
+
+                        # Assign rule name, applied id, and updated jsonParams to marker and update marker_positions
+                        self.markers[self.selected_marker_id]['rule'] = matched_rule.get("name")
+                        self.markers[self.selected_marker_id]['applied_id'] = matched_rule.get("id")
+                        self.markers[self.selected_marker_id]['jsonParams'] = updated_params
+                        for i, m in enumerate(self.mask_positions):
+                            if m.get('marker_id') == self.selected_marker_id:
+                                self.mask_positions[i]['rule'] = matched_rule.get("name")
+                                self.mask_positions[i]['applied_id'] = matched_rule.get("id")
+                                self.mask_positions[i]['jsonParams'] = updated_params
+                        logging.info(f"Assigned rule {matched_rule.get('name')} (id: {matched_rule.get('id')}) to marker {self.selected_marker_id} with parameters {updated_params}")
+
+                        # Create a new record for ruleApplied with the same rule id and updated jsonParams
+                        new_rule_applied = {
+                            "id": matched_rule.get("id"),
+                            "markerId": self.selected_marker_id,
+                            "jsonParams": json.dumps(updated_params)
+                        }
+                        if "ruleApplied" in matched_rule:
+                            matched_rule["ruleApplied"].append(new_rule_applied)
+                        else:
+                            matched_rule["ruleApplied"] = [new_rule_applied]
+
+                        # Write back the updated rule.json file
+                        with open(rule_config_path, 'w') as f:
+                            json.dump(rule_config, f, indent=4)
+                        logging.info(f"Added new ruleApplied record for rule id {matched_rule.get('id')} to rule.json")
+                    else:
+                        logging.error(f"No matching rule found with id {rule_id}.")
                     self.save_mask_positions()
                     logging.info(f"Assigned rule '{rule}' to marker {self.selected_marker_id}")
             self.draw_marker_ids(img)

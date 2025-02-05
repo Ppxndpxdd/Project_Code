@@ -19,50 +19,59 @@ class ZoneIntersectionTracker:
     """Tracks objects in a video and detects intersections with defined zones."""
 
     def __init__(self, config: Dict[str, Any], show_result: bool = True):
+        """Initializes the ZoneIntersectionTracker with configuration."""
         self.config = config
+        self.show_result = show_result
 
         # Load rule configuration from rule.json.
-        # Values from rule.json will override config settings if provided.
         self.rule_config = self.load_rule_config()
+
         # Get rule-based settings with fallback to original config.
-        self.no_entry_zones = self.rule_config.get("no_entry_zones", config.get("no_entry_zones", []))
+        self.no_entry_zones = self.rule_config.get("No Entry", config.get("No Entry", []))
         self.no_parking_duration = self.rule_config.get("no_parking_duration", config.get("no_parking_duration", 60))
         self.wrong_way_config = self.rule_config.get("wrong_way", config.get("wrong_way", {}))
         self.total_duration = self.rule_config.get("total_duration", config.get("total_duration", 5))
-        
+
+        # Initialize time thresholds for bounding box color changes
+        self.time_thresholds = [
+            2 * self.total_duration / 3,  # First threshold (e.g., orange color)
+            self.total_duration            # Second threshold (e.g., red color)
+        ]
+
         model_path = config['model_path']
         mask_json_path = config['mask_json_path']
         edge_id = config.get('edge_id', 'default_id')
+
         logging.info(f"ZoneIntersectionTracker initialized with edge_id: {edge_id}")
-        
+
         self.tracker_config = config.get('tracker_config', 'bytetrack.yaml')
-        self.show_result = show_result
+        if not self.tracker_config:
+            logging.warning("tracker_config not found in config. Using default: 'bytetrack.yaml'")
+            self.tracker_config = 'bytetrack.yaml'
 
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file '{model_path}' not found.")
         if not os.path.exists(mask_json_path):
             raise FileNotFoundError(f"Mask positions file '{mask_json_path}' not found.")
-        
+
         self.mask_json_path = mask_json_path
         self.load_mask_positions()
-
         self.zones = {}
         self.arrows = {}
         self.detection_log = []
         self.tracked_objects = {}
         self.object_zone_timers = defaultdict(lambda: defaultdict(float))
         self.lock = threading.Lock()
-
         self.load_zones()
         self.load_arrows()
 
-        self.fps = 30  # Default FPS
-
+        # Output directory and file setup
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.output_dir = os.path.join(script_dir, config.get('output_dir', 'output'))
         os.makedirs(self.output_dir, exist_ok=True)
         self.output_file = os.path.join(self.output_dir, config.get('output_file', 'detection_log.json'))
 
+        # Device setup (GPU or CPU)
         if torch.cuda.is_available():
             self.device = 'cuda'
             logging.info("Using GPU for inference.")
@@ -70,64 +79,78 @@ class ZoneIntersectionTracker:
             self.device = 'cpu'
             logging.info("Using CPU for inference.")
 
+        # Load YOLO model
         self.model = YOLO(model_path).to(self.device)
-        self.vehicle_class_ids = [2, 3, 5, 7]
+        self.vehicle_class_ids = [2, 3, 5, 7]  # Vehicle classes in COCO dataset
 
-        self.time_thresholds = [
-            2 * self.total_duration / 3,
-            self.total_duration
-        ]
-
+        # MQTT configuration
         mqtt_config = {
-            'mqtt_broker': config['mqtt_broker'],
-            'mqtt_port': config['mqtt_port'],
-            'mqtt_username': config['mqtt_username'],
-            'mqtt_password': config['mqtt_password'],
-            'ca_cert_path': config['ca_cert_path']
+            "mqtt_broker": config['mqtt_broker'],
+            "mqtt_port": config['mqtt_port'],
+            "mqtt_username": config['mqtt_username'],
+            "mqtt_password": config['mqtt_password'],
+            "ca_cert_path": config['ca_cert_path']
         }
         publisher_config = {
-            'edge_id': edge_id,
-            'heartbeat_interval': config.get('heartbeat_interval', 60),
-            'heartbeat_topic': f'{edge_id}/heartbeat',
-            'incident_info_topic': f'{edge_id}/incident'
+            "edge_id": edge_id,
+            "heartbeat_interval": config.get('heartbeat_interval', 60),
+            "heartbeat_topic": f'{edge_id}/heartbeat',
+            "incident_info_topic": f'{edge_id}/incident'
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
         self.mqtt_subscriber = MqttSubscriber(config, self.mqtt_publisher)
-        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/create', self.on_create_marker)
-        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/update', self.on_update_marker)
-        self.mqtt_subscriber.mqtt_client.message_callback_add(f'{edge_id}/marker/delete', self.on_delete_marker)
 
+        # MQTT callbacks for marker management
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{edge_id}/marker/create', self.on_create_marker
+        )
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{edge_id}/marker/update', self.on_update_marker
+        )
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{edge_id}/marker/delete', self.on_delete_marker
+        )
+        
     def load_rule_config(self) -> Dict[str, Any]:
         """Loads rule configuration from the rule.json file."""
         rule_config_path = self.config.get('rule_config_path', 'traffic-guard/config/rule.json')
         if not os.path.exists(rule_config_path):
             logging.error(f"Rule config file not found: {rule_config_path}")
             return {}
+
         try:
             with open(rule_config_path, 'r') as f:
                 rule_config = json.load(f)
-            logging.info("Rule configuration loaded successfully.")
-            return rule_config
+                logging.info("Rule configuration loaded successfully.")
+                return rule_config
         except Exception as e:
             logging.error(f"Failed to load rule config: {e}")
-            return {}
-    
+            return {}        
+        
     def get_rule_for_marker(self, marker_id: int, event: str) -> Dict[str, Any]:
-        """Retrieves rule info from rule.json based on marker_id and event."""
-        # Convert underscores to spaces for both event and rule name:
-        event_str = event.lower().replace('_', ' ')
-        rules = self.rule_config.get('rules', [])
-        for rule in rules:
-            rule_name_str = rule.get('name', '').lower().replace('_', ' ')
-            for applied in rule.get('ruleApplied', []):
-                if applied.get('markerId') == marker_id:
-                    # Now check if the rule name is contained in the event or vice versa
-                    if rule_name_str in event_str or event_str in rule_name_str:
+        """
+        Retrieves rule info from rule.json based on marker_id and event.
+        It scans each active rule and its ruleApplied list for a matching markerId.
+        Returns the rule information including rule name, applied id and jsonParams.
+        """
+        import json
+        event_str = event.lower().strip()
+        for rule in self.rule_config.get('rules', []):
+            if rule.get("status", "").lower() != "active":
+                continue
+            for applied in rule.get("ruleApplied", []):
+                if applied.get("markerId") == marker_id:
+                    # Optionally, ensure the event string is part of the rule name
+                    if event_str in rule.get("name", "").lower():
+                        try:
+                            params = json.loads(applied.get("jsonParams", "{}"))
+                        except Exception as e:
+                            logging.error(f"Error parsing jsonParams for rule {rule.get('id')}: {e}")
+                            params = {}
                         return {
                             "rule_name": rule.get("name"),
-                            "description": rule.get("desc"),
-                            "jsonParams": json.loads(applied.get("jsonParams", "{}")),
-                            "applied_id": applied.get("id")
+                            "applied_id": applied.get("id"),
+                            "jsonParams": params
                         }
         return {}
 
@@ -828,11 +851,23 @@ class ZoneIntersectionTracker:
             marker_id = marker_entry.get('marker_id')
             if marker_id is None:
                 continue
+
+            # Retrieve rule info for "no parking" based on marker_id
+            rule_info = self.get_rule_for_marker(marker_id, 'no parking')
+            if not rule_info:
+                continue  # Skip if no rule applies to this marker_id
+
+            # Parse duration threshold from rule's jsonParams
+            try:
+                params = rule_info.get("jsonParams", {})
+                parking_duration_threshold = float(params.get("duration", self.no_parking_duration))
+            except (ValueError, TypeError):
+                parking_duration_threshold = self.no_parking_duration
+
             if marker_entry['last_seen'] is None:
                 time_in_zone = self._get_time_in_zone(track_id, timestamp)
-                if time_in_zone > self.no_parking_duration and 'threshold_logged' not in marker_entry:
-                    logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_entry['marker_id']}")
-                    rule_info = self.get_rule_for_marker(marker_id, 'no parking')
+                if time_in_zone > parking_duration_threshold and 'threshold_logged' not in marker_entry:
+                    logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_id}")
                     detection_entry = DetectionEntry(
                         object_id=track_id,
                         class_id=int(class_id),
@@ -843,7 +878,7 @@ class ZoneIntersectionTracker:
                         last_seen=None,
                         duration=float(time_in_zone),
                         event='no_parking',
-                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
+                        bbox=tuple(map(float, bbox_np))
                     )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
@@ -851,14 +886,26 @@ class ZoneIntersectionTracker:
                     marker_entry['threshold_logged'] = True
 
     def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
-        """Checks if an object is in a no_entry zone."""
-        for marker_entry in self.tracked_objects[track_id]['marker_entries']:
-            marker_id = marker_entry.get('marker_id')        
+        """Checks if an object is in a no_entry zone using marker IDs from rule.json and prevents duplicate MQTT messages."""
+        # Build set of marker IDs registered as no_entry zones from rule.json
+        no_entry_zone_ids = set()
+        for rule in self.rule_config.get('rules', []):
+            if rule.get("name", "").lower() == "no entry":
+                for applied in rule.get("ruleApplied", []):
+                    markerId = applied.get("markerId")
+                    if markerId is not None:
+                        no_entry_zone_ids.add(markerId)
+
+        # Iterate over tracked marker entries for the object
+        for marker_entry in self.tracked_objects[track_id].get('marker_entries', []):
+            marker_id = marker_entry.get('marker_id')
             if marker_id is None:
                 continue
-            if marker_id in self.no_entry_zones and marker_entry['last_seen'] is None:
-                logging.info(f"Object {track_id} is in a no_entry zone: {marker_entry['marker_id']}")
-                rule_info = self.get_rule_for_marker(marker_id, 'no entry')                
+            # Process only if marker_id is in no_entry zones,
+            # event hasn't been logged yet and no MQTT message has been sent.
+            if marker_id in no_entry_zone_ids and marker_entry.get('last_seen') is None and not marker_entry.get('mqtt_sent', False):
+                logging.info(f"Object {track_id} is in a no_entry zone: {marker_id}")
+                rule_info = self.get_rule_for_marker(marker_id, 'no entry')
                 detection_entry = DetectionEntry(
                     object_id=track_id,
                     class_id=int(class_id),
@@ -874,6 +921,8 @@ class ZoneIntersectionTracker:
                 self.detection_log.append(detection_entry)
                 self.save_detection_log()
                 self.mqtt_publisher.send_incident(detection_entry)
+                # Mark this entry to prevent duplicate MQTT messages
+                marker_entry['mqtt_sent'] = True
                 
     def calculate_direction(self, start_point, end_point):
         """Calculate the direction vector from start to end point."""
@@ -930,19 +979,20 @@ class ZoneIntersectionTracker:
                 marker_id = marker_entry['marker_id']
                 if marker_id is None:
                     continue
-                
-                # Get the relevant rule info from the rule.json config
+
+                # Retrieve rule info for "wrong way" based on marker_id
                 rule_info = self.get_rule_for_marker(marker_id, 'wrong way')
-                if rule_info:
-                    logging.info(f"Applying rule: {rule_info['rule_name']} for marker {marker_id} with config {rule_info['jsonParams']}")
-                
+                if not rule_info:
+                    continue  # Skip if no rule applies to this marker_id
+
                 arrow_data = self.arrows.get(marker_id)
                 if not arrow_data or 'line_points' not in arrow_data:
                     continue
+
                 line_points = arrow_data['line_points']
                 if len(line_points) < 2:
                     continue
-                
+
                 trajectory = marker_entry.get('trajectory', [])
                 if len(trajectory) < 2:
                     continue
@@ -950,7 +1000,7 @@ class ZoneIntersectionTracker:
                 violation = self.is_wrong_way(trajectory, line_points)
                 if violation:
                     event_type = f'wrong_way_{violation}' if violation in ['left', 'right'] else 'wrong_way'
-                    
+                    logging.info(f"Vehicle {track_id} violated wrong way rule in marker {marker_id}: {violation}")
                     detection_entry = DetectionEntry(
                         object_id=track_id,
                         class_id=int(class_id),
