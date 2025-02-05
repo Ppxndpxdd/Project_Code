@@ -5,204 +5,25 @@
         "status": "activate",
         "points": [
             [
-                686,
-                345
+                685,
+                351
             ],
             [
                 664,
-                419
+                415
             ],
             [
-                1268,
+                1267,
                 412
             ],
             [
-                1249,
+                1247,
                 341
             ],
             [
-                686,
-                345
+                685,
+                351
             ]
-        ],
-        "rule": "No Parking",
-        "applied_id": 2,
-        "jsonParams": {
-            "duration": 3.0
-        }
-    },
-    {
-        "marker_id": 2,
-        "type": "zone",
-        "status": "activate",
-        "points": [
-            [
-                864,
-                629
-            ],
-            [
-                901,
-                691
-            ],
-            [
-                1262,
-                546
-            ],
-            [
-                1253,
-                492
-            ],
-            [
-                864,
-                629
-            ]
-        ],
-        "rule": "No Entry",
-        "applied_id": 1,
-        "jsonParams": {
-            "confidence_threshold": 0.1
-        }
-    },
-    {
-        "marker_id": 4,
-        "type": "movement",
-        "status": "activate",
-        "polygon_points": [
-            [
-                882,
-                429
-            ],
-            [
-                1412,
-                1048
-            ],
-            [
-                1607,
-                1048
-            ],
-            [
-                1290,
-                697
-            ],
-            [
-                1047,
-                417
-            ],
-            [
-                882,
-                429
-            ]
-        ],
-        "line_points": [
-            [
-                1496,
-                1038
-            ],
-            [
-                991,
-                449
-            ]
-        ],
-        "rule": "Wrong Way",
-        "applied_id": 3,
-        "jsonParams": {
-            "sub_rules": "opposite"
-        }
-    },
-    {
-        "marker_id": 5,
-        "type": "movement",
-        "status": "activate",
-        "polygon_points": [
-            [
-                738,
-                442
-            ],
-            [
-                882,
-                429
-            ],
-            [
-                1409,
-                1048
-            ],
-            [
-                1206,
-                1048
-            ],
-            [
-                738,
-                442
-            ]
-        ],
-        "line_points": [
-            [
-                837,
-                472
-            ],
-            [
-                1304,
-                1045
-            ]
-        ],
-        "rule": "Wrong Way",
-        "applied_id": 3,
-        "jsonParams": {
-            "sub_rules": "opposite"
-        }
-    },
-    {
-        "marker_id": 3,
-        "type": "movement",
-        "status": "activate",
-        "polygon_points": [
-            [
-                1468,
-                201
-            ],
-            [
-                1473,
-                240
-            ],
-            [
-                997,
-                237
-            ],
-            [
-                386,
-                267
-            ],
-            [
-                401,
-                220
-            ],
-            [
-                997,
-                190
-            ],
-            [
-                1468,
-                201
-            ]
-        ],
-        "line_points": [
-            [
-                415,
-                250
-            ],
-            [
-                992,
-                214
-            ],
-            [
-                1448,
-                223
-            ]
-        ],
-        "rule": "Wrong Way",
-        "applied_id": 3,
-        "jsonParams": {
-            "sub_rules": "opposite"
-        }
+        ]
     }
 ]

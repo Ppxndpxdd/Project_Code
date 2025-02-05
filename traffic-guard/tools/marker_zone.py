@@ -64,8 +64,6 @@ class MarkerZone:
             ret, self.target_frame = self.cap.read()
             if not ret:
                 logging.error("Could not read the frame.")
-            else:
-                self.target_frame = self.resize_frame_to_screen(self.target_frame)
         else:
             logging.error(f"Failed to open video source: {self.video_source}")
 
@@ -80,16 +78,6 @@ class MarkerZone:
         self.point_radius = config.get('point_radius', 5)
         self.undo_stack = []
         self.redo_stack = []
-
-    def resize_frame_to_screen(self, frame: np.ndarray) -> np.ndarray:
-        """Resizes the frame to fit the screen while maintaining aspect ratio."""
-        frame_height, frame_width = frame.shape[:2]
-        scale_width = self.screen_width / frame_width
-        scale_height = self.screen_height / frame_height
-        scale = min(scale_width, scale_height)
-        new_width = int(frame_width * scale)
-        new_height = int(frame_height * scale)
-        return cv2.resize(frame, (new_width, new_height))
 
     def load_markers(self):
         """Loads markers from mask_positions.json and populates zones and arrows."""
