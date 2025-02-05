@@ -562,6 +562,13 @@ class ZoneIntersectionTracker:
 
         return 'unknown'
 
+    def xyxy_to_xywh(self, x1, y1, x2, y2, iw, ih):
+        x_temp = ((x1 + x2) / 2)/iw
+        y_temp = ((y1 + y2) / 2)/ih
+        w_temp = (abs(x1 - x2))/iw
+        h_temp = (abs(y1 - y2))/ih
+        return [float(x_temp), float(y_temp), float(w_temp), float(h_temp)]
+
     def track_intersections(self, video_path: str, frame_to_edit: int):
         # Get screen dimensions
         screen = screeninfo.get_monitors()[0]
@@ -698,7 +705,7 @@ class ZoneIntersectionTracker:
                                 last_seen=None,
                                 duration=None,
                                 event='enter',
-                                bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))  # Convert bbox to float
+                                bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)
                             )
                             # Publish the detection_entry to EMQX
                             self.detection_log.append(detection_entry)
@@ -720,8 +727,7 @@ class ZoneIntersectionTracker:
                                         last_seen=float(timestamp),
                                         duration=float(timestamp - entry['first_seen']),
                                         event='exit',
-                                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))  # Convert bbox to float
-                                    )
+                                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)                                    )
                                     self.detection_log.append(detection_entry)
                                     self.save_detection_log()  # Save when the object leaves the marker zone
 
@@ -761,8 +767,7 @@ class ZoneIntersectionTracker:
                                 last_seen=None,
                                 duration=None,
                                 event='enter_movement',
-                                bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
-                            )
+                                bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)                            )
                             # Publish the detection_entry to EMQX
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
@@ -795,8 +800,7 @@ class ZoneIntersectionTracker:
                                         last_seen=float(timestamp),
                                         duration=float(timestamp - entry['first_seen']),
                                         event='exit_movement',
-                                        bbox=(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]))
-                                    )
+                                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)                                    )
                                     self.detection_log.append(detection_entry)
                                     self.save_detection_log()  # Save when the object leaves the movement zone
 
@@ -804,9 +808,9 @@ class ZoneIntersectionTracker:
                                     self.mqtt_publisher.send_incident(detection_entry)
 
                     # Check for no_parking and no_entry events
-                    self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp)
-                    self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp)
-                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp)
+                    self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp, new_width, new_height)
+                    self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp, new_width, new_height)
+                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp, new_width, new_height)
 
                     # Determine color based on time in zone
                     time_in_zone = self._get_time_in_zone(track_id, timestamp)
@@ -845,7 +849,7 @@ class ZoneIntersectionTracker:
         self.mqtt_publisher.mqtt_handler.disconnect()
         logging.info("Disconnected from EMQX.")
 
-    def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+    def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, new_width, new_height):
         """Checks if an object has exceeded the no_parking duration in a zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
             marker_id = marker_entry.get('marker_id')
@@ -878,14 +882,14 @@ class ZoneIntersectionTracker:
                         last_seen=None,
                         duration=float(time_in_zone),
                         event='no_parking',
-                        bbox=tuple(map(float, bbox_np))
+                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)
                     )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
                     self.mqtt_publisher.send_incident(detection_entry)
                     marker_entry['threshold_logged'] = True
 
-    def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+    def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, new_width, new_height):
         """Checks if an object is in a no_entry zone using marker IDs from rule.json and prevents duplicate MQTT messages."""
         # Build set of marker IDs registered as no_entry zones from rule.json
         no_entry_zone_ids = set()
@@ -916,7 +920,7 @@ class ZoneIntersectionTracker:
                     last_seen=None,
                     duration=None,
                     event='no_entry',
-                    bbox=tuple(map(float, bbox_np))
+                    bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)
                 )
                 self.detection_log.append(detection_entry)
                 self.save_detection_log()
@@ -972,7 +976,7 @@ class ZoneIntersectionTracker:
                 return 'right'
         return None
 
-    def _check_wrong_way(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float):
+    def _check_wrong_way(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, new_width, new_height):
         """Checks if a vehicle is moving in the wrong direction within a movement zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
             if marker_entry.get('type') == 'movement' and marker_entry['last_seen'] is None:
@@ -1011,8 +1015,7 @@ class ZoneIntersectionTracker:
                         last_seen=None,
                         duration=None,
                         event=event_type,
-                        bbox=tuple(map(float, bbox_np))
-                    )
+                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),new_width, new_height)                    )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
                     self.mqtt_publisher.send_incident(detection_entry)
