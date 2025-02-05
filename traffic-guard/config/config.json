@@ -1,4 +1,6 @@
 {
+    "uniqueId": "eTdm",
+    "edgeDeviceId": 3,
     "video_source": "traffic-guard/src/stream.mp4",
     "rtspUrl": "",
     "model_path": "traffic-guard/model/yolo11m.pt",
@@ -12,27 +14,16 @@
     "line_threshold": 10,
     "selection_threshold": 10,
     "iou_threshold": 0.1,
-    "total_duration": 5,
-    "no_entry_zones": [
-        4,
-        5
-    ],
-    "no_parking_zones": [
-        2
-    ],
-    "no_parking_duration": 5,
     "mqtt_broker": "f8b13f71.ala.asia-southeast1.emqxsl.com",
     "mqtt_port": 8883,
     "mqtt_username": "PP",
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
-    "edgeDeviceId": 3,
     "incident_topic": "incident",
     "heartbeat_topic": "heartbeat",
     "subscribe_topics": [
         "marker/create",
         "marker/update",
         "marker/delete"
-    ],
-    "uniqueId": "eTdm"
+    ]
 }

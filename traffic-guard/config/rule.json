@@ -6,7 +6,13 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"confidence_threshold\": 0.5}",
-            "ruleApplied": []
+            "ruleApplied": [
+                {
+                    "id": 1,
+                    "markerId": 4,
+                    "jsonParams": "{\"confidence_threshold\": 0.1}"
+                }
+            ]
         },
         {
             "id": 2,
@@ -14,7 +20,13 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"duration\": 5.0}",
-            "ruleApplied": []
+            "ruleApplied": [
+                {
+                    "id": 2,
+                    "markerId": 2,
+                    "jsonParams": "{\"duration\": 1.0}"
+                }
+            ]
         },
         {
             "id": 3,

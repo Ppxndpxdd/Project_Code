@@ -16,8 +16,6 @@ class MqttPublisher:
         self.heartbeat_thread = threading.Thread(target=self.send_heartbeat, daemon=True)
         self.heartbeat_thread.start()
 
-
-
     def get_incident_topic(self):
         """Generates the incident topic dynamically using the current edgeDeviceId."""
         return f"detection_log/{self.uniqueId}"

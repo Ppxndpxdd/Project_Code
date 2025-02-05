@@ -40,5 +40,96 @@
         "jsonParams": {
             "sub_rules": "opposite"
         }
+    },
+    {
+        "marker_id": 2,
+        "type": "zone",
+        "status": "activate",
+        "points": [
+            [
+                331,
+                576
+            ],
+            [
+                641,
+                706
+            ],
+            [
+                1125,
+                312
+            ],
+            [
+                917,
+                306
+            ],
+            [
+                331,
+                576
+            ]
+        ],
+        "rule": "No Parking",
+        "applied_id": 2,
+        "jsonParams": {
+            "duration": 1.0
+        }
+    },
+    {
+        "marker_id": 3,
+        "type": "zone",
+        "status": "activate",
+        "points": [
+            [
+                333,
+                574
+            ],
+            [
+                640,
+                706
+            ],
+            [
+                1120,
+                311
+            ],
+            [
+                917,
+                306
+            ],
+            [
+                333,
+                574
+            ]
+        ]
+    },
+    {
+        "marker_id": 4,
+        "type": "zone",
+        "status": "activate",
+        "points": [
+            [
+                313,
+                582
+            ],
+            [
+                660,
+                740
+            ],
+            [
+                1149,
+                303
+            ],
+            [
+                896,
+                299
+            ],
+            [
+                313,
+                582
+            ]
+        ],
+        "rule": "No Entry",
+        "applied_id": 1,
+        "jsonParams": {
+            "confidence_threshold": 0.1
+        }
     }
 ]

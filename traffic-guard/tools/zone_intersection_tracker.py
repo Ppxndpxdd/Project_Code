@@ -25,15 +25,34 @@ class ZoneIntersectionTracker:
         self.rule_config = self.load_rule_config()
 
         # Get rule-based settings with fallback to original config.
-        self.no_entry_zones = self.rule_config.get("No Entry", config.get("No Entry", []))
-        self.no_parking_duration = self.rule_config.get("no_parking_duration", config.get("no_parking_duration", 60))
+        self.no_parking_duration = []
+        for rule in self.rule_config.get("rules", []):
+            if rule.get("name", "").lower() == "no parking":
+                duration = None
+                # Prefer the duration from ruleApplied if available:
+                if rule.get("ruleApplied"):
+                    try:
+                        applied_record = rule["ruleApplied"][0]
+                        params = json.loads(applied_record.get("jsonParams", "{}"))
+                        duration = params.get("duration")
+                    except Exception as e:
+                        logging.error(f"Error parsing no parking ruleApplied jsonParams: {e}")
+                # Fallback to the root jsonParams from the rule if needed:
+                if duration is None:
+                    try:
+                        params = json.loads(rule.get("jsonParams", "{}"))
+                        duration = params.get("duration")
+                    except Exception as e:
+                        logging.error(f"Error parsing no parking jsonParams: {e}")
+                if duration is not None:
+                    self.no_parking_duration = duration
+                break
         self.wrong_way_config = self.rule_config.get("wrong_way", config.get("wrong_way", {}))
-        self.total_duration = self.rule_config.get("total_duration", config.get("total_duration", 5))
 
         # Initialize time thresholds for bounding box color changes
         self.time_thresholds = [
-            2 * self.total_duration / 3,  # First threshold (e.g., orange color)
-            self.total_duration            # Second threshold (e.g., red color)
+            2 * self.no_parking_duration / 3,  # First threshold (e.g., orange color)
+            self.no_parking_duration            # Second threshold (e.g., red color)
         ]
 
         model_path = config['model_path']
