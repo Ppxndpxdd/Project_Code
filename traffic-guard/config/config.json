@@ -1,6 +1,6 @@
 {
-    "video_source": "traffic-guard/src/stream2.mp4",
-    "rtsp_url": "",
+    "video_source": "traffic-guard/src/stream.mp4",
+    "rtspUrl": "",
     "model_path": "traffic-guard/model/yolo11m.pt",
     "frame_to_edit": 1,
     "mask_json_path": "traffic-guard/config/marker_positions.json",
@@ -26,12 +26,13 @@
     "mqtt_username": "PP",
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
-    "edge_id": "Fjhp",
+    "edgeDeviceId": 3,
     "incident_topic": "incident",
     "heartbeat_topic": "heartbeat",
     "subscribe_topics": [
         "marker/create",
         "marker/update",
         "marker/delete"
-    ]
+    ],
+    "uniqueId": "eTdm"
 }

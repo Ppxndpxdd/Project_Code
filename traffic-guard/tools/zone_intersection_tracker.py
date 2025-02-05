@@ -13,7 +13,6 @@ from .mqtt_publisher import MqttPublisher
 from .mqtt_subscriber import MqttSubscriber
 from ultralytics import YOLO
 
-
 class ZoneIntersectionTracker:
     """Tracks objects in a video and detects intersections with defined zones."""
 
@@ -39,9 +38,8 @@ class ZoneIntersectionTracker:
 
         model_path = config['model_path']
         mask_json_path = config['mask_json_path']
-        edge_id = config.get('edge_id', 'default_id')
-
-        logging.info(f"ZoneIntersectionTracker initialized with edge_id: {edge_id}")
+        uniqueId = config.get('uniqueId', 'default_id')
+        logging.info(f"ZoneIntersectionTracker initialized with edgeDeviceId: {uniqueId}")
 
         self.tracker_config = config.get('tracker_config', 'bytetrack.yaml')
         if not self.tracker_config:
@@ -91,23 +89,23 @@ class ZoneIntersectionTracker:
             "ca_cert_path": config['ca_cert_path']
         }
         publisher_config = {
-            "edge_id": edge_id,
+            "uniqueId": uniqueId,
             "heartbeat_interval": config.get('heartbeat_interval', 60),
-            "heartbeat_topic": f'{edge_id}/heartbeat',
-            "incident_info_topic": f'{edge_id}/incident'
+            "heartbeat_topic": f'{uniqueId}/heartbeat',
+            "incident_info_topic": f'{uniqueId}/incident'
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
         self.mqtt_subscriber = MqttSubscriber(config, self.mqtt_publisher)
 
         # MQTT callbacks for marker management
         self.mqtt_subscriber.mqtt_client.message_callback_add(
-            f'{edge_id}/marker/create', self.on_create_marker
+            f'{uniqueId}/marker/create', self.on_create_marker
         )
         self.mqtt_subscriber.mqtt_client.message_callback_add(
-            f'{edge_id}/marker/update', self.on_update_marker
+            f'{uniqueId}/marker/update', self.on_update_marker
         )
         self.mqtt_subscriber.mqtt_client.message_callback_add(
-            f'{edge_id}/marker/delete', self.on_delete_marker
+            f'{uniqueId}/marker/delete', self.on_delete_marker
         )
         
     def load_rule_config(self) -> Dict[str, Any]:

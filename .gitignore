@@ -53,3 +53,5 @@ output_image.png
 output.f234.mp4
 output.f270.mp4
 traffic-guard/src/stream.mp4
+output_segment.mp4
+extracted_frames/frame_0.00.jpg

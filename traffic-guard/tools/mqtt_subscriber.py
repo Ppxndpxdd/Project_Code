@@ -22,7 +22,8 @@ class MqttSubscriber:
         except Exception as e:
             logging.error(f"Error loading markers from {self.mask_positions_file}: {e}")
             self.mask_positions = []
-        self.edge_id = config.get('edge_id', 'default_id')
+        self.edgeDeviceId = config.get('edgeDeviceId', 'default_id')
+        self.uniqueId = config.get('uniqueId', 'default_id')
         self.config_file = 'traffic-guard/config/config.json'
         self.config = config
         self.mqtt_publisher = mqtt_publisher  # Pass the MqttPublisher instance
@@ -60,17 +61,17 @@ class MqttSubscriber:
     def on_message(self, client, userdata, msg):
         try:
             payload = json.loads(msg.payload.decode())
-            if msg.topic == f"{self.edge_id}/marker/create":
+            if msg.topic == f"{self.uniqueId}/marker/create":
                 self.create_marker(payload)
-            elif msg.topic == f"{self.edge_id}/marker/update":
+            elif msg.topic == f"{self.uniqueId}/marker/update":
                 self.update_marker(payload)
-            elif msg.topic == f"{self.edge_id}/marker/delete":
+            elif msg.topic == f"{self.uniqueId}/marker/delete":
                 self.delete_marker(payload)
-            elif msg.topic == f"{self.edge_id}/edge/create":
+            elif msg.topic == f"{self.uniqueId}/create":
                 self.create_edge_device(payload)
-            elif msg.topic == f"{self.edge_id}/edge/update":
+            elif msg.topic == f"{self.uniqueId}/update":
                 self.update_edge_device(payload)
-            elif msg.topic == f"{self.edge_id}/edge/delete":
+            elif msg.topic == f"{self.uniqueId}/delete":
                 self.delete_edge_device(payload)
         except Exception as e:
             logging.error(f"Error processing message from topic {msg.topic}: {e}")
@@ -84,45 +85,18 @@ class MqttSubscriber:
             logging.error(f"Could not connect to EMQX: {e}")
 
     def subscribe_to_topics(self):
-        """Subscribes to the required MQTT topics based on the current edge_id."""
+        """Subscribes to the required MQTT topics based on the current edgeDeviceId."""
         topics = [
-            f"{self.edge_id}/marker/create",
-            f"{self.edge_id}/marker/update",
-            f"{self.edge_id}/marker/delete",
-            f"{self.edge_id}/edge/create",
-            f"{self.edge_id}/edge/update",
-            f"{self.edge_id}/edge/delete"
+            f"{self.uniqueId}/marker/create",
+            f"{self.uniqueId}/marker/update",
+            f"{self.uniqueId}/marker/delete",
+            f"{self.uniqueId}/create",
+            f"{self.uniqueId}/update",
+            f"{self.uniqueId}/delete"
         ]
         for topic in topics:
             self.mqtt_client.subscribe(topic)
             logging.info(f"Subscribed to topic: '{topic}'")
-
-    # Replace the update_edge_id method with the following code:
-    def update_edge_id(self, new_edge_id: str):
-        """Forces an update of the edge_id and resubscribes to the new topics,
-        even if the new_edge_id matches the current edge_id.
-        This ensures the config.json value is respected on every update."""
-        with self.lock:  # Ensure thread safety
-            old_edge_id = self.edge_id
-            # Always perform the unsubscription to force a refresh
-            old_topics = [
-                f"{old_edge_id}/marker/create",
-                f"{old_edge_id}/marker/update",
-                f"{old_edge_id}/marker/delete",
-                f"{old_edge_id}/edge/create",
-                f"{old_edge_id}/edge/update",
-                f"{old_edge_id}/edge/delete"
-            ]
-            for topic in old_topics:
-                self.mqtt_client.unsubscribe(topic)
-                logging.info(f"Unsubscribed from topic: {topic}")
-
-            # Update the edge_id from the one in config (ensuring it is fresh)
-            self.edge_id = new_edge_id
-            logging.info(f"Force-updated edge_id to: {self.edge_id}")
-
-            # Subscribe to new topics using the updated edge_id
-            self.subscribe_to_topics()
 
     def save_mask_positions(self):
         """Saves the current in-memory mask_positions to file."""
@@ -194,10 +168,10 @@ class MqttSubscriber:
     def create_edge_device(self, data: Dict[str, Any]):
         """Handles the creation of a new edge device."""
         try:
-            # Update the config with the new edge_id and rtsp_url
-            new_edge_id = data.get('edge_id', self.config['edge_id'])
-            self.config['edge_id'] = new_edge_id
-            self.config['rtsp_url'] = data.get('rtsp_url', self.config.get('rtsp_url', ''))
+            # Update the config with the new edgeDeviceId and rtspUrl
+            new_edgeDeviceId = data.get('edgeDeviceId', self.config['edgeDeviceId'])
+            self.config['edgeDeviceId'] = new_edgeDeviceId
+            self.config['rtspUrl'] = data.get('rtspUrl', self.config.get('rtspUrl', ''))
             
             # Save the updated config to the config.json file
             with open(self.config_file, 'w') as f:
@@ -205,24 +179,22 @@ class MqttSubscriber:
             
             logging.info(f"Created edge device: {data}")
             self.publish_log("edge create complete")
-            # Update subscriber edge_id and topics
-            self.update_edge_id(new_edge_id)
+
         except Exception as e:
             logging.error(f"Error creating edge device: {e}")
 
     def update_edge_device(self, data: Dict[str, Any]):
         """Handles the updating of an existing edge device."""
         try:
-            # Update the config with the new edge_id and rtsp_url
-            if 'edge_id' in data:
-                new_edge_id = data['edge_id']
-                self.config['edge_id'] = new_edge_id
-                # Notify MqttPublisher to update its edge_id as well
-                self.mqtt_publisher.update_edge_id(new_edge_id)
-                # Update subscriber's edge_id and topics
-                self.update_edge_id(new_edge_id)
-            if 'rtsp_url' in data:
-                self.config['rtsp_url'] = data['rtsp_url']
+            # Update the config with the new edgeDeviceId and rtspUrl
+            if 'edgeDeviceId' in data:
+                new_edgeDeviceId = data['edgeDeviceId']
+                self.config['edgeDeviceId'] = new_edgeDeviceId
+                # Notify MqttPublisher to update its edgeDeviceId as well
+                # Update subscriber's edgeDeviceId and topics
+                self.edge_id = new_edgeDeviceId            
+                if 'rtspUrl' in data:
+                    self.config['rtspUrl'] = data['rtspUrl']
             
             # Save the updated config to the config.json file
             with open(self.config_file, 'w') as f:
@@ -236,9 +208,9 @@ class MqttSubscriber:
     def delete_edge_device(self, data: Dict[str, Any]):
         """Handles the deletion of an edge device."""
         try:
-            # Reset the edge_id and rtsp_url to default values
-            self.config['edge_id'] = 'default_id'
-            self.config['rtsp_url'] = ''
+            # Reset the edgeDeviceId and rtspUrl to default values
+            self.config['edgeDeviceId'] = ''
+            self.config['rtspUrl'] = ''
             
             # Save the updated config to the config.json file
             with open(self.config_file, 'w') as f:
@@ -246,15 +218,13 @@ class MqttSubscriber:
             
             logging.info(f"Deleted edge device: {data}")
             self.publish_log("edge delete complete")
-            # Update subscriber edge_id and topics to default
-            self.update_edge_id('default_id')
         except Exception as e:
             logging.error(f"Error deleting edge device: {e}")
 
     def publish_log(self, message: str):
         """Publishes a log message to the 'marker_positions/log' topic."""
         try:
-            self.mqtt_client.publish(f'{self.edge_id}/marker/log', message)
+            self.mqtt_client.publish(f'{self.uniqueId}/marker/log', message)
         except Exception as e:
             logging.error(f"Error publishing log message: {e}")
 

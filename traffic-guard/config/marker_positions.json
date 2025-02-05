@@ -1,29 +1,44 @@
 [
     {
         "marker_id": 1,
-        "type": "zone",
+        "type": "movement",
         "status": "activate",
-        "points": [
+        "polygon_points": [
             [
-                685,
-                351
+                918,
+                305
             ],
             [
-                664,
-                415
+                1124,
+                311
             ],
             [
-                1267,
-                412
+                641,
+                705
             ],
             [
-                1247,
-                341
+                330,
+                577
             ],
             [
-                685,
-                351
+                918,
+                305
             ]
-        ]
+        ],
+        "line_points": [
+            [
+                991,
+                320
+            ],
+            [
+                524,
+                609
+            ]
+        ],
+        "rule": "Wrong Way",
+        "applied_id": 3,
+        "jsonParams": {
+            "sub_rules": "opposite"
+        }
     }
 ]
