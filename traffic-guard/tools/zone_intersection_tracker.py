@@ -147,7 +147,7 @@ class ZoneIntersectionTracker:
         try:
             with open(rule_config_path, 'r') as f:
                 rule_config = json.load(f)
-                logging.info("Rule configuration loaded successfully.")
+                # logging.info("Rule configuration loaded successfully.")
                 return rule_config
         except Exception as e:
             logging.error(f"Failed to load rule config: {e}")
@@ -327,39 +327,40 @@ class ZoneIntersectionTracker:
         return True, "Payload is valid."
 
     def on_update_marker(self, client, userdata, msg):
-        """Handles the update of an existing marker from an MQTT message."""
-        try:
-            data = json.loads(msg.payload.decode())
-            is_valid, message = self._validate_payload_update(data)
-            if not is_valid:
-                logging.error(f"Invalid payload received: {message}")
-                self.mqtt_publisher.send_incident({"error": message})
-                return
+        with self.lock:
+            """Handles the update of an existing marker from an MQTT message."""
+            try:
+                data = json.loads(msg.payload.decode())
+                is_valid, message = self._validate_payload_update(data)
+                if not is_valid:
+                    logging.error(f"Invalid payload received: {message}")
+                    self.mqtt_publisher.send_incident({"error": message})
+                    return
 
-            updated = False
-            for i, position in enumerate(self.mask_positions):
-                if position.get('marker_id') == data['marker_id']:
-                    self.mask_positions[i].update(data)
-                    updated = True
-                    break
-            if not updated:
-                warning_msg = "No matching marker found to update."
-                logging.warning(warning_msg)
-                self.mqtt_publisher.send_incident({"warning": warning_msg})
-                return
-            self.save_mask_positions()
-            self.load_zones()
-            self.load_arrows()
-            logging.info(f"Updated marker position: {data}")
-            self.mqtt_publisher.send_incident({"message": "update complete", "marker_id": data['marker_id']})
-        except json.JSONDecodeError:
-            error_msg = "Invalid JSON payload. Marker update aborted."
-            logging.error(error_msg)
-            self.mqtt_publisher.send_incident({"error": error_msg})
-        except Exception as e:
-            error_msg = f"Error updating marker position: {e}"
-            logging.error(error_msg)
-            self.mqtt_publisher.send_incident({"error": error_msg})
+                updated = False
+                for i, position in enumerate(self.mask_positions):
+                    if position.get('marker_id') == data['marker_id']:
+                        self.mask_positions[i].update(data)
+                        updated = True
+                        break
+                if not updated:
+                    warning_msg = "No matching marker found to update."
+                    logging.warning(warning_msg)
+                    self.mqtt_publisher.send_incident({"warning": warning_msg})
+                    return
+                self.save_mask_positions()
+                self.load_zones()
+                self.load_arrows()
+                logging.info(f"Updated marker position: {data}")
+                self.mqtt_publisher.send_incident({"message": "update complete", "marker_id": data['marker_id']})
+            except json.JSONDecodeError:
+                error_msg = "Invalid JSON payload. Marker update aborted."
+                logging.error(error_msg)
+                self.mqtt_publisher.send_incident({"error": error_msg})
+            except Exception as e:
+                error_msg = f"Error updating marker position: {e}"
+                logging.error(error_msg)
+                self.mqtt_publisher.send_incident({"error": error_msg})
 
     def _validate_payload_update(self, data: Dict[str, Any]) -> Tuple[bool, str]:
         """Validates the payload for updating a marker."""
@@ -416,79 +417,83 @@ class ZoneIntersectionTracker:
         return True, "Payload is valid."
 
     def on_delete_marker(self, client, userdata, msg):
-        """Handles the deletion of a marker from an MQTT message."""
-        try:
-            data = json.loads(msg.payload.decode())
-            markers_deleted = 0
+        with self.lock:
+            """Handles the deletion of a marker from an MQTT message."""
+            try:
+                data = json.loads(msg.payload.decode())
+                markers_deleted = 0
 
-            if 'marker_id' in data:
-                marker_id = data['marker_id']
-                original_count = len(self.mask_positions)
-                self.mask_positions = [
-                    position for position in self.mask_positions
-                    if position.get('marker_id') != marker_id
-                ]
-                markers_deleted = original_count - len(self.mask_positions)
-                logging.debug(f"Markers deleted with marker_id={marker_id}: {markers_deleted}")
-
-                # Remove marker entries from tracked_objects
-                for track_id, obj in self.tracked_objects.items():
-                    original_entries = len(obj['marker_entries'])
-                    obj['marker_entries'] = [
-                        entry for entry in obj['marker_entries']
-                        if entry['marker_id'] != marker_id
+                if 'marker_id' in data:
+                    marker_id = data['marker_id']
+                    original_count = len(self.mask_positions)
+                    self.mask_positions = [
+                        position for position in self.mask_positions
+                        if position.get('marker_id') != marker_id
                     ]
-                    if len(obj['marker_entries']) < original_entries:
-                        logging.debug(f"Reset marker entries for object {track_id} due to marker deletion.")
+                    markers_deleted = original_count - len(self.mask_positions)
+                    logging.debug(f"Markers deleted with marker_id={marker_id}: {markers_deleted}")
 
-            else:
-                error_msg = "Delete payload must contain 'marker_id'."
+                    # Remove marker entries from tracked_objects
+                    for track_id, obj in self.tracked_objects.items():
+                        original_entries = len(obj['marker_entries'])
+                        obj['marker_entries'] = [
+                            entry for entry in obj['marker_entries']
+                            if entry['marker_id'] != marker_id
+                        ]
+                        if len(obj['marker_entries']) < original_entries:
+                            logging.debug(f"Reset marker entries for object {track_id} due to marker deletion.")
+
+                else:
+                    error_msg = "Delete payload must contain 'marker_id'."
+                    logging.error(error_msg)
+                    self.mqtt_publisher.send_incident({"error": error_msg})
+                    return
+
+                if markers_deleted == 0:
+                    warning_msg = "No matching marker found to delete."
+                    logging.warning(warning_msg)
+                    self.mqtt_publisher.send_incident({"warning": warning_msg})
+                else:
+                    logging.info(f"Deleted marker position: {data}")
+                    self.mqtt_publisher.send_incident({"message": "delete complete", "marker_id": marker_id})
+
+                self.save_mask_positions()
+                self.load_zones()
+                self.load_arrows()
+
+            except json.JSONDecodeError:
+                error_msg = "Invalid JSON payload. Marker deletion aborted."
                 logging.error(error_msg)
                 self.mqtt_publisher.send_incident({"error": error_msg})
-                return
-
-            if markers_deleted == 0:
-                warning_msg = "No matching marker found to delete."
-                logging.warning(warning_msg)
-                self.mqtt_publisher.send_incident({"warning": warning_msg})
-            else:
-                logging.info(f"Deleted marker position: {data}")
-                self.mqtt_publisher.send_incident({"message": "delete complete", "marker_id": marker_id})
-
-            self.save_mask_positions()
-            self.load_zones()
-            self.load_arrows()
-
-        except json.JSONDecodeError:
-            error_msg = "Invalid JSON payload. Marker deletion aborted."
-            logging.error(error_msg)
-            self.mqtt_publisher.send_incident({"error": error_msg})
-        except Exception as e:
-            error_msg = f"Error deleting marker position: {e}"
-            logging.error(error_msg)
-            self.mqtt_publisher.send_incident({"error": error_msg})
+            except Exception as e:
+                error_msg = f"Error deleting marker position: {e}"
+                logging.error(error_msg)
+                self.mqtt_publisher.send_incident({"error": error_msg})
 
     def on_create_rule_applied(self, client, userdata, msg):
-        """Handles the creation of a new rule applied from an MQTT message."""
-        self.rule_config = self.load_rule_config()
-        # Optionally trigger other things like reloading zones/arrows if needed
-        self.load_zones()
-        self.load_arrows()
-        logging.info("Rule config reloaded after create rule applied.")
+        with self.lock:
+            """Handles the creation of a new rule applied from an MQTT message."""
+            self.rule_config = self.load_rule_config()
+            # Optionally trigger other things like reloading zones/arrows if needed
+            self.load_zones()
+            self.load_arrows()
+            logging.info("Rule config reloaded after create rule applied.")
 
     def on_update_rule_applied(self, client, userdata, msg):
-        """Handles the update of a rule applied from an MQTT message."""
-        self.rule_config = self.load_rule_config()
-        self.load_zones()
-        self.load_arrows()
-        logging.info("Rule config reloaded after update rule applied.")
+        with self.lock:        
+            """Handles the update of a rule applied from an MQTT message."""
+            self.rule_config = self.load_rule_config()
+            self.load_zones()
+            self.load_arrows()
+            logging.info("Rule config reloaded after update rule applied.")
 
     def on_delete_rule_applied(self, client, userdata, msg):
-        """Handles the deletion of a rule applied from an MQTT message."""
-        self.rule_config = self.load_rule_config()
-        self.load_zones()
-        self.load_arrows()
-        logging.info("Rule config reloaded after delete rule applied.")
+        with self.lock:
+            """Handles the deletion of a rule applied from an MQTT message."""
+            self.rule_config = self.load_rule_config()
+            self.load_zones()
+            self.load_arrows()
+            logging.info("Rule config reloaded after delete rule applied.")
 
     def save_mask_positions(self):
         """Saves the mask positions to the JSON file."""
@@ -554,6 +559,7 @@ class ZoneIntersectionTracker:
 
     def draw_arrows(self, frame: np.ndarray):
         """Draws arrows on the frame."""
+        self.rule_config = self.load_rule_config()
         for marker_id, arrow_data in list(self.arrows.items()):
             polygon_points = arrow_data['polygon_points']
             line_points = arrow_data['line_points']

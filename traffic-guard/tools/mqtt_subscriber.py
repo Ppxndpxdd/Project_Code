@@ -11,6 +11,7 @@ from tools.mqtt_publisher import MqttPublisher
 class MqttSubscriber:
     def __init__(self, config: Dict[str, Any], mqtt_publisher: MqttPublisher):
         self.lock = threading.Lock()
+        self.zone_tracker = None
         self.emqx_host = config.get('mqtt_broker', 'localhost')
         self.emqx_port = config.get('mqtt_port', 8883)
         self.emqx_username = config.get('mqtt_username', '')
@@ -107,14 +108,6 @@ class MqttSubscriber:
                 json.dump(self.mask_positions, f, indent=4)
         except Exception as e:
             logging.error(f"Error saving markers to {self.mask_positions_file}: {e}")
-
-    def notify_marker_update(self):
-        """Notifies relevant components to reload markers in realtime."""
-        # For example, if ZoneIntersectionTracker instance is stored:
-        if hasattr(self, 'zone_tracker'):
-            self.zone_tracker.load_zones()
-            self.zone_tracker.load_arrows()
-            self.zone_tracker.load_rule_config()
 
     def create_marker(self, data: Dict[str, Any]):
         try:
@@ -225,33 +218,108 @@ class MqttSubscriber:
         except Exception as e:
             logging.error(f"Error deleting edge device: {e}")
 
-    def create_rule_applied(self, data: Dict[str, Any]):
+    def validate_rule_json_params(self, rule_id: int, provided_params: dict) -> bool:
+        try:
+            with open(self.rule_config_file, 'r') as f:
+                rule_config = json.load(f)
+        except Exception as e:
+            logging.error(f"Error loading rule.json: {e}")
+            self.publish_log("Error loading rule configuration.")
+            return False
+
+        rule = next((r for r in rule_config.get('rules', []) if r.get('id') == rule_id), None)
+        if not rule:
+            self.publish_log(f"No rule found with rule_id {rule_id}.")
+            return False
+
+        try:
+            allowed_params = json.loads(rule.get("jsonParams", "{}"))
+            if not isinstance(allowed_params, dict):
+                logging.error(f"Allowed parameters for rule_id {rule_id} should be a JSON object.")
+                return False
+        except Exception as e:
+            logging.error(f"Error parsing rule jsonParams for rule_id {rule_id}: {e}")
+            return False
+
+        for key in provided_params.keys():
+            if key not in allowed_params:
+                self.publish_log(
+                    f"Invalid json parameter '{key}' for rule_id {rule_id}. Allowed keys: {list(allowed_params.keys())}"
+                )
+                return False
+
+        return True
+
+    def validate_create_payload(self, data: dict) -> bool:
+        if 'markerId' not in data or 'ruleId' not in data:
+            self.publish_log("Payload missing required fields 'markerId' and/or 'ruleId' for create_rule_applied.")
+            return False
+        if 'jsonParams' in data and not isinstance(data['jsonParams'], dict):
+            self.publish_log("Field 'jsonParams' must be a JSON object for create_rule_applied.")
+            return False
+        if not self.validate_rule_json_params(data['ruleId'], data.get('jsonParams', {})):
+            return False
+        return True
+
+    def validate_update_payload(self, data: dict) -> bool:
+        if 'markerId' not in data or 'ruleId' not in data or 'appliedId' not in data:
+            self.publish_log("Payload missing one or more required fields ('markerId', 'ruleId', 'appliedId') for update_rule_applied.")
+            return False
+        if 'jsonParams' in data and not isinstance(data['jsonParams'], dict):
+            self.publish_log("Field 'jsonParams' must be a JSON object for update_rule_applied.")
+            return False
+        if not self.validate_rule_json_params(data['ruleId'], data.get('jsonParams', {})):
+            return False
+        return True
+
+    def validate_delete_payload(self, data: dict) -> bool:
+        if 'markerId' not in data or 'ruleId' not in data or 'appliedId' not in data:
+            self.publish_log("Payload missing one or more required fields ('markerId', 'ruleId', 'appliedId') for delete_rule_applied.")
+            return False
+        return True
+
+    def reset_rule_applied_counter(self):
+        """Recalculates the rule_applied_counter from rule.json.
+           If no applied rule entries exist, resets counter to 0.
+        """
+        max_applied = 0
+        try:
+            with open(self.rule_config_file, 'r') as f:
+                rule_config = json.load(f)
+            for rule in rule_config.get('rules', []):
+                for applied in rule.get('ruleApplied', []):
+                    applied_id = applied.get('id', 0)
+                    if applied_id > max_applied:
+                        max_applied = applied_id
+        except Exception as e:
+            logging.error(f"Error resetting rule_applied_counter: {e}")
+        self.rule_applied_counter = max_applied
+        logging.info(f"rule_applied_counter reset to {self.rule_applied_counter}")
+
+    def create_rule_applied(self, data: dict):
         """Handles the creation of a new rule applied to a marker and updates rule.json."""
         try:
+            if not self.validate_create_payload(data):
+                return
+
             marker_id = data.get('markerId')
             rule_id = data.get('ruleId')
             json_params = data.get('jsonParams', {})
 
-            if marker_id is None or rule_id is None:
-                error_msg = "Payload must contain 'markerId' and 'ruleId'."
-                logging.error(error_msg)
-                self.publish_log(error_msg)
-                return
+            # Reset counter based on rule.json contents.
+            self.reset_rule_applied_counter()
 
             # Load rule.json
-            try:
-                with open(self.rule_config_file, 'r') as f:
-                    rule_config = json.load(f)
-            except Exception as e:
-                logging.error(f"Error loading rule.json: {e}")
-                return
+            with open(self.rule_config_file, 'r') as f:
+                rule_config = json.load(f)
 
-            # Find the rule and add a new ruleApplied entry
+            matched_rule_name = None
             for rule in rule_config.get('rules', []):
                 if rule.get('id') == rule_id:
-                    self.rule_applied_counter += 1 # Increment the counter
+                    matched_rule_name = rule.get('name')
+                    self.rule_applied_counter += 1
                     new_rule_applied = {
-                        "id": self.rule_applied_counter,  # Use the auto-incremented ID
+                        "id": self.rule_applied_counter,
                         "markerId": marker_id,
                         "jsonParams": json.dumps(json_params)
                     }
@@ -259,129 +327,136 @@ class MqttSubscriber:
                         rule['ruleApplied'].append(new_rule_applied)
                     else:
                         rule['ruleApplied'] = [new_rule_applied]
-
-                    # Save the updated rule.json
-                    try:
-                        with open(self.rule_config_file, 'w') as f:
-                            json.dump(rule_config, f, indent=4)
-                        logging.info(f"Applied rule {rule_id} to marker {marker_id} and updated rule.json")
-                        self.publish_log(f"Applied rule {rule_id} to marker {marker_id}")
-                    except Exception as e:
-                        logging.error(f"Error saving rule.json: {e}")
+                    with open(self.rule_config_file, 'w') as f:
+                        json.dump(rule_config, f, indent=4)
+                    logging.info(f"Applied rule {rule_id} to marker {marker_id} and updated rule.json")
+                    self.publish_log(f"Applied rule {rule_id} to marker {marker_id}")
                     break
             else:
                 warning_msg = f"No rule found with rule_id {rule_id}"
                 logging.warning(warning_msg)
                 self.publish_log(warning_msg)
+                return
 
-            # Find the marker and update it
+            # Update marker similar to create_marker logic.
+            marker_found = False
             for i, position in enumerate(self.mask_positions):
                 if position.get('marker_id') == marker_id:
-                    position['rule'] = rule_id  # Or rule name, depending on your needs
-                    position['jsonParams'] = json_params
-                    self.save_mask_positions()
-                    self.notify_marker_update()
-                    return
+                    self.mask_positions[i]['rule'] = matched_rule_name
+                    self.mask_positions[i]['jsonParams'] = json_params
+                    self.mask_positions[i]['applied_id'] = self.rule_applied_counter
+                    marker_found = True
+                    break
 
-            warning_msg = f"No marker found with marker_id {marker_id}"
-            logging.warning(warning_msg)
-            self.publish_log(warning_msg)
-
+            if marker_found:
+                self.save_mask_positions()
+                logging.debug("Marker updated after creating applied rule. Triggering realtime refresh.")
+                self.notify_marker_update()  # Refresh visualization (including text overlays)
+            else:
+                warning_msg = f"No marker found with marker_id {marker_id}"
+                logging.warning(warning_msg)
+                self.publish_log(warning_msg)
         except Exception as e:
             logging.error(f"Error applying rule: {e}")
 
-    def update_rule_applied(self, data: Dict[str, Any]):
+    def update_rule_applied(self, data: dict):
         """Handles the updating of an existing rule applied to a marker and updates rule.json."""
         try:
+            if not self.validate_update_payload(data):
+                return
+
             marker_id = data.get('markerId')
             rule_id = data.get('ruleId')
             json_params = data.get('jsonParams', {})
-            applied_id = data.get('appliedId')
-
-            if marker_id is None or rule_id is None or applied_id is None:
-                error_msg = "Payload must contain 'markerId', 'ruleId', and 'appliedId'."
-                logging.error(error_msg)
-                self.publish_log(error_msg)
-                return
-
-            # Load rule.json
             try:
-                with open(self.rule_config_file, 'r') as f:
-                    rule_config = json.load(f)
+                applied_id = int(data.get('appliedId'))  # Ensure appliedId is an integer.
             except Exception as e:
-                logging.error(f"Error loading rule.json: {e}")
+                logging.error("Invalid appliedId provided: %s", data.get('appliedId'))
                 return
 
-            # Find the rule and update the ruleApplied entry
+            with open(self.rule_config_file, 'r') as f:
+                rule_config = json.load(f)
+
+            matched_rule_name = None
+            rule_found = False
             for rule in rule_config.get('rules', []):
                 if rule.get('id') == rule_id:
+                    matched_rule_name = rule.get('name')
+                    rule_found = True
                     if 'ruleApplied' in rule:
+                        applied_found = False
                         for applied in rule['ruleApplied']:
-                            if applied.get('id') == applied_id:
+                            # Convert applied id to int for consistency.
+                            try:
+                                applied_rule_id = int(applied.get('id'))
+                            except Exception:
+                                applied_rule_id = applied.get('id')
+                            if applied_rule_id == applied_id:
                                 applied['jsonParams'] = json.dumps(json_params)
-
-                                # Save the updated rule.json
-                                try:
-                                    with open(self.rule_config_file, 'w') as f:
-                                        json.dump(rule_config, f, indent=4)
-                                    logging.info(f"Updated rule {rule_id} for marker {marker_id} and updated rule.json")
-                                    self.publish_log(f"Updated rule {rule_id} for marker {marker_id}")
-                                except Exception as e:
-                                    logging.error(f"Error saving rule.json: {e}")
+                                applied_found = True
                                 break
-                        else:
-                            warning_msg = f"No ruleApplied found with appliedId {applied_id}"
+                        if not applied_found:
+                            warning_msg = f"No applied rule found with appliedId {applied_id}"
                             logging.warning(warning_msg)
                             self.publish_log(warning_msg)
-                            break
+                            return
                     else:
-                        warning_msg = f"No ruleApplied found for rule_id {rule_id}"
+                        warning_msg = f"No applied rules exist for rule_id {rule_id}"
                         logging.warning(warning_msg)
                         self.publish_log(warning_msg)
+                        return
                     break
-            else:
+
+            if not rule_found:
                 warning_msg = f"No rule found with rule_id {rule_id}"
                 logging.warning(warning_msg)
                 self.publish_log(warning_msg)
+                return
 
-            # Find the marker and update it
+            with open(self.rule_config_file, 'w') as f:
+                json.dump(rule_config, f, indent=4)
+            logging.info(f"Updated rule {rule_id} for marker {marker_id}")
+            self.publish_log(f"Updated rule {rule_id} for marker {marker_id}")
+
+            marker_found = False
             for i, position in enumerate(self.mask_positions):
                 if position.get('marker_id') == marker_id:
-                    position['rule'] = rule_id  # Or rule name, depending on your needs
-                    position['jsonParams'] = json_params
-                    self.save_mask_positions()
-                    self.notify_marker_update()
-                    return
+                    self.mask_positions[i]['rule'] = matched_rule_name
+                    self.mask_positions[i]['jsonParams'] = json_params
+                    self.mask_positions[i]['applied_id'] = applied_id
+                    marker_found = True
+                    break
 
-            warning_msg = f"No marker found with marker_id {marker_id}"
-            logging.warning(warning_msg)
-            self.publish_log(warning_msg)
-
+            if marker_found:
+                self.save_mask_positions()
+                logging.debug("Marker updated after updating applied rule. Triggering realtime refresh.")
+                self.notify_marker_update()
+            else:
+                warning_msg = f"No marker found with marker_id {marker_id}"
+                logging.warning(warning_msg)
+                self.publish_log(warning_msg)
         except Exception as e:
             logging.error(f"Error updating rule: {e}")
 
-    def delete_rule_applied(self, data: Dict[str, Any]):
+    def delete_rule_applied(self, data: dict):
         """Handles the deletion of a rule applied to a marker and updates rule.json."""
         try:
+            if not self.validate_delete_payload(data):
+                return
+
             marker_id = data.get('markerId')
             rule_id = data.get('ruleId')
             applied_id = data.get('appliedId')
 
-            if marker_id is None or rule_id is None or applied_id is None:
-                error_msg = "Payload must contain 'markerId', 'ruleId', and 'appliedId'."
-                logging.error(error_msg)
-                self.publish_log(error_msg)
-                return
-
             # Load rule.json
             try:
                 with open(self.rule_config_file, 'r') as f:
                     rule_config = json.load(f)
             except Exception as e:
                 logging.error(f"Error loading rule.json: {e}")
+                self.publish_log("Error loading rule configuration.")
                 return
 
-            # Find the rule and delete the ruleApplied entry
             for rule in rule_config.get('rules', []):
                 if rule.get('id') == rule_id:
                     if 'ruleApplied' in rule:
@@ -389,12 +464,10 @@ class MqttSubscriber:
                             applied for applied in rule['ruleApplied']
                             if applied.get('id') != applied_id
                         ]
-
-                        # Save the updated rule.json
                         try:
                             with open(self.rule_config_file, 'w') as f:
                                 json.dump(rule_config, f, indent=4)
-                            logging.info(f"Deleted rule {rule_id} for marker {marker_id} and updated rule.json")
+                            logging.info(f"Deleted rule {rule_id} for marker {marker_id}")
                             self.publish_log(f"Deleted rule {rule_id} for marker {marker_id}")
                         except Exception as e:
                             logging.error(f"Error saving rule.json: {e}")
@@ -408,14 +481,18 @@ class MqttSubscriber:
                 warning_msg = f"No rule found with rule_id {rule_id}"
                 logging.warning(warning_msg)
                 self.publish_log(warning_msg)
+                return
 
-            # Find the marker and update it
+            # Update marker info in mask_positions by removing rule, jsonParams, and applied_id
             for i, position in enumerate(self.mask_positions):
-                if position.get('marker_id') == marker_id:
+                if position.get('marker_id') == data.get('markerId'):
                     position.pop('rule', None)
                     position.pop('jsonParams', None)
+                    position.pop('applied_id', None)
                     self.save_mask_positions()
-                    self.notify_marker_update()
+                    # DEBUG: log marker update before notifying
+                    logging.debug(f"Deleted applied rule; updating mask_positions for marker {data.get('markerId')}.")
+                    self.notify_marker_update()  # Trigger downstream refresh
                     return
 
             warning_msg = f"No marker found with marker_id {marker_id}"
@@ -425,9 +502,26 @@ class MqttSubscriber:
         except Exception as e:
             logging.error(f"Error deleting rule: {e}")
 
+    def notify_marker_update(self):
+        logging.debug("notify_marker_update() called. Mask positions: %s", self.mask_positions)
+        if self.zone_tracker:
+            try:
+                logging.debug("Re-loading the full rule configuration from rule.json.")
+                # Reload rule.json in zone tracker so that latest ruleApplied entries are used.
+                if hasattr(self.zone_tracker, "load_rule_config"):
+                    self.zone_tracker.rule_config = self.zone_tracker.load_rule_config()
+                    logging.debug("Zone tracker rule configuration reloaded.")
+                self.zone_tracker.load_zones()
+                self.zone_tracker.load_arrows()
+                logging.info("Zone tracker realtime update triggered successfully.")
+            except Exception as ex:
+                logging.error("Error during zone_tracker update: %s", ex)
+        else:
+            logging.warning("No zone_tracker defined in MqttSubscriber; realtime update may not occur.")
+
     def publish_log(self, message: str):
         """Publishes a log message to the 'marker_positions/log' topic."""
-        marker_log_topic = f"{self.config.get('uniqueId')}/{self.config.get('marker_log_topic', 'marker/log')}"
+        marker_log_topic = f"{self.config.get('uniqueId')}/{self.config.get('log_topic', 'log')}"
         try:
             self.mqtt_publisher.publish(marker_log_topic, message)
         except Exception as e:

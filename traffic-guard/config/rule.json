@@ -5,8 +5,14 @@
             "name": "No Entry",
             "markerType": "zone",
             "status": "active",
-            "jsonParams": "{\"confidence_threshold\": 0.5}",
-            "ruleApplied": []
+            "jsonParams": "{\"confidence\": 0.5}",
+            "ruleApplied": [
+                {
+                    "id": 1,
+                    "markerId": 4,
+                    "jsonParams": "{\"confidence\": 5.0}"
+                }
+            ]
         },
         {
             "id": 2,

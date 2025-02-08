@@ -2,19 +2,36 @@
     {
         "object_id": 1,
         "class_id": 2,
-        "confidence": 0.9321525692939758,
+        "confidence": 0.9323122501373291,
         "marker_id": 4,
         "first_seen": 0.25016666666666665,
         "last_seen": null,
         "duration": null,
         "event": "enter",
         "bbox": [
-            0.1674782911936442,
-            0.5528579711914062,
-            0.2255406379699707,
-            0.23448848017939813
+            0.16747875014940897,
+            0.5528698391384549,
+            0.2255231261253357,
+            0.23446259675202547
         ],
         "id_rule_applied": null
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9323122501373291,
+        "marker_id": 4,
+        "first_seen": 0.25016666666666665,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.16747875014940897,
+            0.5528698391384549,
+            0.2255231261253357,
+            0.23446259675202547
+        ],
+        "id_rule_applied": 1
     },
     {
         "object_id": 1,
@@ -51,6 +68,23 @@
         "id_rule_applied": null
     },
     {
+        "object_id": 61,
+        "class_id": 7,
+        "confidence": 0.6214751601219177,
+        "marker_id": 4,
+        "first_seen": 4.100166666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.16987786690394083,
+            0.5158672050193503,
+            0.23387803236643473,
+            0.27373942622432
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 69,
         "class_id": 2,
         "confidence": 0.4286651015281677,
@@ -66,6 +100,23 @@
             0.2729875917787905
         ],
         "id_rule_applied": null
+    },
+    {
+        "object_id": 69,
+        "class_id": 2,
+        "confidence": 0.4286651015281677,
+        "marker_id": 4,
+        "first_seen": 4.100166666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.16992433269818624,
+            0.5162816082989728,
+            0.2661940693855286,
+            0.2729875917787905
+        ],
+        "id_rule_applied": 1
     },
     {
         "object_id": 70,
@@ -85,6 +136,23 @@
         "id_rule_applied": null
     },
     {
+        "object_id": 70,
+        "class_id": 7,
+        "confidence": 0.5813351273536682,
+        "marker_id": 4,
+        "first_seen": 4.300166666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.21990621089935303,
+            0.47589317604347514,
+            0.24119172096252442,
+            0.23729660599320024
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 71,
         "class_id": 2,
         "confidence": 0.5068760514259338,
@@ -100,6 +168,23 @@
             0.21907371238425927
         ],
         "id_rule_applied": null
+    },
+    {
+        "object_id": 71,
+        "class_id": 2,
+        "confidence": 0.5068760514259338,
+        "marker_id": 4,
+        "first_seen": 4.500166666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.2662684996922811,
+            0.4435249046043113,
+            0.21931681632995606,
+            0.21907371238425927
+        ],
+        "id_rule_applied": 1
     },
     {
         "object_id": 72,
@@ -119,6 +204,23 @@
         "id_rule_applied": null
     },
     {
+        "object_id": 72,
+        "class_id": 7,
+        "confidence": 0.4580187499523163,
+        "marker_id": 4,
+        "first_seen": 4.8335,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.3261423031489054,
+            0.4027891653555411,
+            0.185638952255249,
+            0.18059618914568865
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 81,
         "class_id": 2,
         "confidence": 0.5354585647583008,
@@ -136,19 +238,19 @@
         "id_rule_applied": null
     },
     {
-        "object_id": 61,
-        "class_id": 7,
-        "confidence": 0.5277689695358276,
+        "object_id": 81,
+        "class_id": 2,
+        "confidence": 0.5354585647583008,
         "marker_id": 4,
-        "first_seen": 4.100166666666666,
+        "first_seen": 5.050166666666667,
         "last_seen": null,
-        "duration": 1.0166666666666675,
-        "event": "no_parking",
+        "duration": null,
+        "event": "no_entry",
         "bbox": [
-            0.37309659322102867,
-            0.37115532203956886,
-            0.16014830271402994,
-            0.15730958161530673
+            0.3626958688100179,
+            0.3765909689444083,
+            0.16286427179972332,
+            0.16030536227756076
         ],
         "id_rule_applied": 1
     },
@@ -170,6 +272,23 @@
         "id_rule_applied": null
     },
     {
+        "object_id": 85,
+        "class_id": 7,
+        "confidence": 0.4033539593219757,
+        "marker_id": 4,
+        "first_seen": 5.250166666666667,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.38965401649475095,
+            0.3613136574074074,
+            0.14616727828979492,
+            0.15035315619574652
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 86,
         "class_id": 7,
         "confidence": 0.5247300267219543,
@@ -185,6 +304,23 @@
             0.13129012496383102
         ],
         "id_rule_applied": null
+    },
+    {
+        "object_id": 86,
+        "class_id": 7,
+        "confidence": 0.5247300267219543,
+        "marker_id": 4,
+        "first_seen": 5.6335,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.4268396536509196,
+            0.3363305268464265,
+            0.12614336013793945,
+            0.13129012496383102
+        ],
+        "id_rule_applied": 1
     },
     {
         "object_id": 87,
@@ -204,53 +340,104 @@
         "id_rule_applied": null
     },
     {
+        "object_id": 87,
+        "class_id": 7,
+        "confidence": 0.425515353679657,
+        "marker_id": 4,
+        "first_seen": 5.700166666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.434236478805542,
+            0.3334804958767361,
+            0.12095855077107748,
+            0.12722597475405092
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 88,
         "class_id": 2,
-        "confidence": 0.5032501816749573,
+        "confidence": 0.4999600648880005,
         "marker_id": 4,
         "first_seen": 5.850166666666666,
         "last_seen": null,
         "duration": null,
         "event": "enter",
         "bbox": [
-            0.44819676081339516,
-            0.32449979428891784,
-            0.11253840128580729,
-            0.12110431812427662
+            0.44818503061930337,
+            0.324502690633138,
+            0.11259454091389974,
+            0.12114300198025174
         ],
         "id_rule_applied": null
     },
     {
+        "object_id": 88,
+        "class_id": 2,
+        "confidence": 0.4999600648880005,
+        "marker_id": 4,
+        "first_seen": 5.850166666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.44818503061930337,
+            0.324502690633138,
+            0.11259454091389974,
+            0.12114300198025174
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 90,
         "class_id": 7,
-        "confidence": 0.43008577823638916,
+        "confidence": 0.43916037678718567,
         "marker_id": 4,
         "first_seen": 6.150166666666666,
         "last_seen": null,
         "duration": null,
         "event": "enter",
         "bbox": [
-            0.46914779345194496,
-            0.3099694569905599,
-            0.10088733037312826,
-            0.11148317125108508
+            0.46916114489237465,
+            0.3099819889775029,
+            0.10086208979288737,
+            0.11148489492910879
         ],
         "id_rule_applied": null
     },
     {
+        "object_id": 90,
+        "class_id": 7,
+        "confidence": 0.43916037678718567,
+        "marker_id": 4,
+        "first_seen": 6.150166666666666,
+        "last_seen": null,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.46916114489237465,
+            0.3099819889775029,
+            0.10086208979288737,
+            0.11148489492910879
+        ],
+        "id_rule_applied": 1
+    },
+    {
         "object_id": 61,
         "class_id": 7,
-        "confidence": 0.4778233766555786,
+        "confidence": 0.4821348190307617,
         "marker_id": 4,
         "first_seen": 4.100166666666666,
         "last_seen": 6.266833333333333,
         "duration": 2.166666666666667,
         "event": "exit",
         "bbox": [
-            0.4742235819498698,
-            0.3073518258553964,
-            0.0989962895711263,
-            0.1086830421730324
+            0.4742280642191569,
+            0.307350907502351,
+            0.09899826049804687,
+            0.10865730003074363
         ],
         "id_rule_applied": null
     }

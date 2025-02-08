@@ -24,6 +24,11 @@
                 313,
                 582
             ]
-        ]
+        ],
+        "rule": "No Entry",
+        "jsonParams": {
+            "confidence": 5.0
+        },
+        "applied_id": 1
     }
 ]
