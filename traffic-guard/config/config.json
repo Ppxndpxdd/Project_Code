@@ -19,11 +19,17 @@
     "mqtt_username": "PP",
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
-    "incident_topic": "incident",
+    "detection_topic": "detection",
     "heartbeat_topic": "heartbeat",
     "subscribe_topics": [
+        "create",
+        "update",
+        "delete",
         "marker/create",
         "marker/update",
-        "marker/delete"
+        "marker/delete",
+        "rule/create",
+        "rule/update",
+        "rule/delete"
     ]
 }

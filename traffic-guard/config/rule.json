@@ -6,13 +6,7 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"confidence_threshold\": 0.5}",
-            "ruleApplied": [
-                {
-                    "id": 1,
-                    "markerId": 4,
-                    "jsonParams": "{\"confidence_threshold\": 0.1}"
-                }
-            ]
+            "ruleApplied": []
         },
         {
             "id": 2,
@@ -20,13 +14,7 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"duration\": 5.0}",
-            "ruleApplied": [
-                {
-                    "id": 2,
-                    "markerId": 2,
-                    "jsonParams": "{\"duration\": 1.0}"
-                }
-            ]
+            "ruleApplied": []
         },
         {
             "id": 3,
@@ -34,13 +22,7 @@
             "markerType": "movement",
             "status": "active",
             "jsonParams": "{\"sub_rules\": \"opposite\", \"right\", \"left\"}",
-            "ruleApplied": [
-                {
-                    "id": 3,
-                    "markerId": 1,
-                    "jsonParams": "{\"sub_rules\": \"opposite\"}"
-                }
-            ]
+            "ruleApplied": []
         }
     ]
 }

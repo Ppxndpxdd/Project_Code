@@ -110,8 +110,8 @@ class ZoneIntersectionTracker:
         publisher_config = {
             "uniqueId": uniqueId,
             "heartbeat_interval": config.get('heartbeat_interval', 60),
-            "heartbeat_topic": f'{uniqueId}/heartbeat',
-            "incident_info_topic": f'{uniqueId}/incident'
+            "heartbeat_topic": f'heartbeat/{uniqueId}',
+            "detection_topic": f'detection_log/{uniqueId}'
         }
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
         self.mqtt_subscriber = MqttSubscriber(config, self.mqtt_publisher)
@@ -125,6 +125,16 @@ class ZoneIntersectionTracker:
         )
         self.mqtt_subscriber.mqtt_client.message_callback_add(
             f'{uniqueId}/marker/delete', self.on_delete_marker
+        )
+        
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{uniqueId}/rule/create', self.on_create_rule_applied
+        )
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{uniqueId}/rule/update', self.on_update_rule_applied
+        )
+        self.mqtt_subscriber.mqtt_client.message_callback_add(
+            f'{uniqueId}/rule/delete', self.on_delete_rule_applied
         )
         
     def load_rule_config(self) -> Dict[str, Any]:
@@ -144,29 +154,22 @@ class ZoneIntersectionTracker:
             return {}        
         
     def get_rule_for_marker(self, marker_id: int, event: str) -> Dict[str, Any]:
-        """
-        Retrieves rule info from rule.json based on marker_id and event.
-        It scans each active rule and its ruleApplied list for a matching markerId.
-        Returns the rule information including rule name, applied id and jsonParams.
-        """
-        import json
-        event_str = event.lower().strip()
-        for rule in self.rule_config.get('rules', []):
-            if rule.get("status", "").lower() != "active":
-                continue
-            for applied in rule.get("ruleApplied", []):
-                if applied.get("markerId") == marker_id:
-                    # Optionally, ensure the event string is part of the rule name
-                    if event_str in rule.get("name", "").lower():
-                        try:
-                            params = json.loads(applied.get("jsonParams", "{}"))
-                        except Exception as e:
-                            logging.error(f"Error parsing jsonParams for rule {rule.get('id')}: {e}")
-                            params = {}
+        """Retrieves rule info from rule.json based on marker_id and event."""
+        # Convert underscores to spaces for both event and rule name:
+        event_str = event.lower().replace('_', ' ')
+        rules = self.rule_config.get('rules', [])
+        for rule in rules:
+            rule_name_str = rule.get('name', '').lower().replace('_', ' ')
+            for applied in rule.get('ruleApplied', []):
+                if applied.get('markerId') == marker_id:
+                    # Now check if the rule name is contained in the event or vice versa
+                    if rule_name_str in event_str or event_str in rule_name_str:
                         return {
                             "rule_name": rule.get("name"),
-                            "applied_id": applied.get("id"),
-                            "jsonParams": params
+                            "description": rule.get("desc", ""),
+                            "jsonParams": json.loads(applied.get("jsonParams", "{}")),
+                            # Use the 'id' field from rule.json, ensuring consistency
+                            "applied_id": applied.get("id")
                         }
         return {}
 
@@ -464,6 +467,28 @@ class ZoneIntersectionTracker:
             error_msg = f"Error deleting marker position: {e}"
             logging.error(error_msg)
             self.mqtt_publisher.send_incident({"error": error_msg})
+
+    def on_create_rule_applied(self, client, userdata, msg):
+        """Handles the creation of a new rule applied from an MQTT message."""
+        self.rule_config = self.load_rule_config()
+        # Optionally trigger other things like reloading zones/arrows if needed
+        self.load_zones()
+        self.load_arrows()
+        logging.info("Rule config reloaded after create rule applied.")
+
+    def on_update_rule_applied(self, client, userdata, msg):
+        """Handles the update of a rule applied from an MQTT message."""
+        self.rule_config = self.load_rule_config()
+        self.load_zones()
+        self.load_arrows()
+        logging.info("Rule config reloaded after update rule applied.")
+
+    def on_delete_rule_applied(self, client, userdata, msg):
+        """Handles the deletion of a rule applied from an MQTT message."""
+        self.rule_config = self.load_rule_config()
+        self.load_zones()
+        self.load_arrows()
+        logging.info("Rule config reloaded after delete rule applied.")
 
     def save_mask_positions(self):
         """Saves the mask positions to the JSON file."""

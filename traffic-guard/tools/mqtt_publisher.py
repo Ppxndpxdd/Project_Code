@@ -8,8 +8,11 @@ from .mqtt_handler import MqttHandler
 class MqttPublisher:
     def __init__(self, config):
         self.lock = threading.Lock()
+        self.config = config
         self.mqtt_handler = MqttHandler(config)
-        self.heartbeat_interval = config.get('heartbeat_interval', 30)  # in seconds
+        # Get heartbeat and incident topics from config
+        self.incident_topic = f"{self.config.get('detection_topic')}"
+        self.heartbeat_topic = f"{self.config.get('heartbeat_topic')}"
         self.uniqueId = config.get('uniqueId', 'default_id')
         
         # Start the heartbeat thread
@@ -17,12 +20,12 @@ class MqttPublisher:
         self.heartbeat_thread.start()
 
     def get_incident_topic(self):
-        """Generates the incident topic dynamically using the current edgeDeviceId."""
-        return f"detection_log/{self.uniqueId}"
+        """Retrieve the incident topic name from config.json."""
+        return self.incident_topic
 
     def get_heartbeat_topic(self):
-        """Generates the heartbeat topic dynamically using the current edgeDeviceId."""
-        return f"keep_alive/{self.uniqueId}"
+        """Retrieve the heartbeat topic name from config.json."""
+        return self.heartbeat_topic
 
     def send_incident(self, detection_entry):
         if not isinstance(detection_entry, dict):
@@ -65,3 +68,10 @@ class MqttPublisher:
             except Exception as e:
                 logging.error(f"Failed to send heartbeat: {e}")
             time.sleep(30)  # Send heartbeat every 30 seconds
+            
+    def publish(self, topic, payload):
+        """Publishes a message to the MQTT broker."""
+        try:
+            self.mqtt_handler.publish(topic, payload)
+        except Exception as e:
+            logging.error(f"Failed to publish message: {e}")
