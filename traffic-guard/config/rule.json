@@ -6,13 +6,7 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"confidence\": 0.5}",
-            "ruleApplied": [
-                {
-                    "id": 1,
-                    "markerId": 4,
-                    "jsonParams": "{\"confidence\": 5.0}"
-                }
-            ]
+            "ruleApplied": []
         },
         {
             "id": 2,

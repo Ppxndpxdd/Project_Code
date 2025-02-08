@@ -142,8 +142,8 @@ class MqttSubscriber:
 
     def delete_marker(self, data: Dict[str, Any]):
         try:
-            # Delete based on a unique key, e.g. marker_id; adjust if needed
             marker_id = data.get('marker_id')
+            # Remove marker from mask_positions
             new_positions = [
                 position for position in self.mask_positions
                 if position.get('marker_id') != marker_id
@@ -156,6 +156,23 @@ class MqttSubscriber:
             self.mask_positions = new_positions
             self.save_mask_positions()
             logging.info(f"Deleted marker position: {data}")
+            
+            # Remove applied rule entries associated with marker_id from rule.json
+            try:
+                with open(self.rule_config_file, 'r') as f:
+                    rule_config = json.load(f)
+                for rule in rule_config.get('rules', []):
+                    if 'ruleApplied' in rule:
+                        rule['ruleApplied'] = [
+                            applied for applied in rule['ruleApplied']
+                            if applied.get('markerId') != marker_id
+                        ]
+                with open(self.rule_config_file, 'w') as f:
+                    json.dump(rule_config, f, indent=4)
+                logging.info(f"Deleted applied rule entries for marker_id {marker_id} in rule.json")
+            except Exception as e:
+                logging.error(f"Error updating rule.json when deleting marker {marker_id}: {e}")
+            
             self.publish_log("delete complete")
             self.notify_marker_update()
         except Exception as e:
