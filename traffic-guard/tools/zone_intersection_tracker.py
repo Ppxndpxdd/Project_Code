@@ -736,8 +736,8 @@ class ZoneIntersectionTracker:
                                 class_id=int(class_id),
                                 confidence=float(conf),
                                 marker_id=int(marker_id),
-                                first_seen=float(timestamp),
-                                last_seen=None,
+                                first_seen=float(entry['first_seen']),
+                                last_seen=float(timestamp),
                                 duration=None,
                                 event='enter',
                                 bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
@@ -798,8 +798,8 @@ class ZoneIntersectionTracker:
                                 class_id=int(class_id),
                                 confidence=float(conf),
                                 marker_id=int(marker_id),
-                                first_seen=float(timestamp),
-                                last_seen=None,
+                                first_seen=float(entry['first_seen']),
+                                last_seen=float(timestamp),
                                 duration=None,
                                 event='enter_movement',
                                 bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                            )
@@ -914,7 +914,7 @@ class ZoneIntersectionTracker:
                         marker_id=int(marker_id),
                         id_rule_applied=rule_info.get("applied_id"),
                         first_seen=float(marker_entry['first_seen']),
-                        last_seen=None,
+                        last_seen=float(timestamp),
                         duration=float(time_in_zone),
                         event='no_parking',
                         bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
@@ -951,8 +951,8 @@ class ZoneIntersectionTracker:
                     confidence=float(conf),
                     marker_id=int(marker_id),
                     id_rule_applied=rule_info.get("applied_id"),
-                    first_seen=float(timestamp),
-                    last_seen=None,
+                    first_seen=float(marker_entry['first_seen']),  # Use the initial entry time
+                    last_seen=float(timestamp),
                     duration=None,
                     event='no_entry',
                     bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
@@ -1046,8 +1046,8 @@ class ZoneIntersectionTracker:
                         confidence=float(conf),
                         marker_id=int(marker_id),
                         id_rule_applied=rule_info.get("applied_id"),
-                        first_seen=float(timestamp),
-                        last_seen=None,
+                        first_seen=float(marker_entry['first_seen']),  # Use the initial entry time
+                        last_seen=float(timestamp),
                         duration=None,
                         event=event_type,
                         bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                    )

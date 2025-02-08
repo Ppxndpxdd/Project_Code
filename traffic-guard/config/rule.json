@@ -22,7 +22,13 @@
             "markerType": "movement",
             "status": "active",
             "jsonParams": "{\"sub_rules\": \"opposite\", \"right\", \"left\"}",
-            "ruleApplied": []
+            "ruleApplied": [
+                {
+                    "id": 3,
+                    "markerId": 1,
+                    "jsonParams": "{\"sub_rules\": \"opposite\"}"
+                }
+            ]
         }
     ]
 }

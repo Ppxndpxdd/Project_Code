@@ -9,8 +9,8 @@ class DetectionEntry:
     class_id: int
     confidence: float
     marker_id: int
-    first_seen: float
-    last_seen: Optional[float]
+    first_seen: str
+    last_seen: Optional[str]
     duration: Optional[float]
     event: str
     bbox: Tuple[float, float, float, float]

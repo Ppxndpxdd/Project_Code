@@ -1,1 +1,44 @@
-[]
+[
+    {
+        "marker_id": 1,
+        "type": "movement",
+        "status": "activate",
+        "polygon_points": [
+            [
+                383,
+                532
+            ],
+            [
+                808,
+                572
+            ],
+            [
+                1108,
+                325
+            ],
+            [
+                885,
+                318
+            ],
+            [
+                383,
+                532
+            ]
+        ],
+        "line_points": [
+            [
+                967,
+                325
+            ],
+            [
+                612,
+                546
+            ]
+        ],
+        "rule": "Wrong Way",
+        "applied_id": 3,
+        "jsonParams": {
+            "sub_rules": "opposite"
+        }
+    }
+]

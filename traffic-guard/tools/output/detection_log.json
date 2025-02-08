@@ -1,0 +1,2280 @@
+[
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9108980894088745,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.4835,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.22321494817733764,
+            0.501807361178928,
+            0.21120700041453044,
+            0.20131703129521122
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9245215058326721,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.5168333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.23186814785003662,
+            0.49530619868525755,
+            0.20824163754781086,
+            0.19629375316478587
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9243502616882324,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.5335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.23417235612869264,
+            0.4937733402958623,
+            0.20796837011973063,
+            0.19505852593315973
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.92451012134552,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.5501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.23485989173253377,
+            0.493316579748083,
+            0.2086197296778361,
+            0.19480231956199365
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.924358606338501,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.5668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.23496129115422568,
+            0.493295160929362,
+            0.20944848855336506,
+            0.1947919209798177
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9256411194801331,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.5835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.24024891058603923,
+            0.4888278113471137,
+            0.20620433489481607,
+            0.19091149789315684
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9258528351783752,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.24209535916646321,
+            0.4872990926106771,
+            0.20558252334594726,
+            0.18956490975839121
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9204086661338806,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.24812311331431072,
+            0.48241760819046586,
+            0.20237698554992675,
+            0.18584668194806134
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9199534058570862,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2502230167388916,
+            0.480754965322989,
+            0.20165891647338868,
+            0.1844972398546007
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9165620803833008,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2563465674718221,
+            0.4756702846950955,
+            0.19976261456807454,
+            0.18213811803747107
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9200085997581482,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2634168068567912,
+            0.4695613437228733,
+            0.19604700406392414,
+            0.17793245668764468
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9203399419784546,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.6835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.26587124665578205,
+            0.46744706895616317,
+            0.19514756202697753,
+            0.17637306495949073
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9027442336082458,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.271299942334493,
+            0.46294037147804545,
+            0.1920929431915283,
+            0.17311974984628184
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.902982771396637,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.27311518987019856,
+            0.4614179540563513,
+            0.19134546915690104,
+            0.17201012505425348
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.904512882232666,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7334999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2735806862513224,
+            0.46094789858217594,
+            0.19141443570454916,
+            0.1716896339699074
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9049498438835144,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.27362619241078695,
+            0.4608573631004051,
+            0.19171970685323078,
+            0.17161503544560186
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8970673680305481,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.27857921123504636,
+            0.45658596180103445,
+            0.18929460843404133,
+            0.16907464486581308
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8968788385391235,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.7835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2802982012430827,
+            0.4551092783610026,
+            0.1886721928914388,
+            0.1681838141547309
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8963361978530884,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.28081730206807454,
+            0.4545885863127532,
+            0.18885602951049804,
+            0.16805151480215566
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8697270750999451,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.28704113165537515,
+            0.4506202697753906,
+            0.18757017453511557,
+            0.16637567590784144
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8701304197311401,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2892712910970052,
+            0.4492364671495226,
+            0.18746776580810548,
+            0.16579979790581598
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8629636168479919,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2943887233734131,
+            0.4414804246690538,
+            0.17721726099650065,
+            0.15445641411675348
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8635213971138,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2961124420166016,
+            0.4387696301495587,
+            0.1745404561360677,
+            0.1501309147587529
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8480051159858704,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.8835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.29822192986806234,
+            0.43604541354709203,
+            0.17673850059509277,
+            0.15056711832682293
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8499935865402222,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.2988928238550822,
+            0.43518760116012006,
+            0.178556489944458,
+            0.15082117716471355
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8327815532684326,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3021181583404541,
+            0.4335316410771123,
+            0.18154160181681314,
+            0.15261603461371528
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8317449688911438,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.30368494987487793,
+            0.43306603608308014,
+            0.18294204076131185,
+            0.15322986178927953
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8388659954071045,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.30474151770273844,
+            0.43289639508282696,
+            0.18379597663879393,
+            0.15367742467809606
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8392308354377747,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3049094518025716,
+            0.43293435838487415,
+            0.1843396504720052,
+            0.15385456791630497
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8863334655761719,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 0.9834999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.31202776432037355,
+            0.4306133270263672,
+            0.18472062746683757,
+            0.15512432522243924
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8869050741195679,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3146125634511312,
+            0.429812099315502,
+            0.18433230717976887,
+            0.15567550659179688
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8897770643234253,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3202689170837402,
+            0.4259961587411386,
+            0.18029054005940756,
+            0.15284076266818578
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8888474702835083,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0334999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.32231431007385253,
+            0.4246317121717665,
+            0.1785183270772298,
+            0.1518686647768374
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.895736575126648,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3269347270329793,
+            0.4185991923014323,
+            0.1740492343902588,
+            0.14833537914134837
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8956449627876282,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3285259564717611,
+            0.4164715237087674,
+            0.1721647262573242,
+            0.14695920591001158
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8960064649581909,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.0835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.33304734230041505,
+            0.413145997789171,
+            0.16871430079142252,
+            0.14404593573676217
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8959195613861084,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.33459685643514,
+            0.4120059825755932,
+            0.1674973169962565,
+            0.14303956208405672
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9050877094268799,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.33865345319112145,
+            0.40895798294632524,
+            0.1659883181254069,
+            0.14216862431278934
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9050074219703674,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3400386651357015,
+            0.4079065958658854,
+            0.16523822148640951,
+            0.14190730342158564
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.905329167842865,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.34043378829956056,
+            0.40757088837800204,
+            0.1646697998046875,
+            0.14174479731807002
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9051505923271179,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1668333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3404802163441976,
+            0.40752731605812353,
+            0.16441386540730793,
+            0.1418362370243779
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9054404497146606,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.1835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.34477370580037436,
+            0.40455491807725696,
+            0.16214942932128906,
+            0.14003013328269676
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9059708714485168,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3490050156911214,
+            0.3998215145534939,
+            0.1575590451558431,
+            0.13608599062319154
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9057861566543579,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2168333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3504770278930664,
+            0.39814251087330005,
+            0.15588601430257162,
+            0.13465618557400175
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9200355410575867,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.354997189839681,
+            0.3955708256474248,
+            0.15433336893717448,
+            0.1334946808991609
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9194919466972351,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3565657615661621,
+            0.3947199644865813,
+            0.15368455251057941,
+            0.1330935725459346
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9192749261856079,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.357046381632487,
+            0.39448844061957467,
+            0.1534009297688802,
+            0.13299266673900462
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9099969863891602,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.2834999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3606346766153971,
+            0.39208328812210647,
+            0.1504675547281901,
+            0.13048491301359955
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.902876079082489,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.36543451944986977,
+            0.38863518326370805,
+            0.14845040639241536,
+            0.12892662330910012
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9028924703598022,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.36708428064982096,
+            0.3874738198739511,
+            0.14766343434651694,
+            0.1284237614384404
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9034332633018494,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3676176389058431,
+            0.3871432975486473,
+            0.14729480743408202,
+            0.12825631035698784
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9042405486106873,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3501666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.36769197781880697,
+            0.3870421233000579,
+            0.14708210627237955,
+            0.12820999710648148
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9035829901695251,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3676504929860433,
+            0.38704290036801936,
+            0.1469117800394694,
+            0.12817555180302373
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9006817936897278,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.3835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.37099881172180177,
+            0.3848039980287905,
+            0.14629780451456706,
+            0.12800366436993635
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9008632302284241,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3721821149190267,
+            0.3840289504439742,
+            0.14583225250244142,
+            0.12791903460467302
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8944817185401917,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4168333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3757452646891276,
+            0.3813759273952908,
+            0.14501654307047526,
+            0.12761436744972512
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8876258134841919,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3769246578216553,
+            0.3802633214879919,
+            0.14502833684285482,
+            0.12808945267288774
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8967536091804504,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.38034744262695314,
+            0.37694387082700376,
+            0.14346917470296225,
+            0.1272198994954427
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8973455429077148,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4668333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3846803347269694,
+            0.373278554280599,
+            0.14232311248779297,
+            0.12677646213107638
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8973868489265442,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.4835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.38620948791503906,
+            0.3720450224699797,
+            0.14149309794108073,
+            0.1265469021267361
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8969699144363403,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.38667475382486977,
+            0.3716745447229456,
+            0.1408484141031901,
+            0.1264209888599537
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8945960998535156,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3900939782460531,
+            0.3689001577871817,
+            0.14198535283406574,
+            0.12835399486400462
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8952020406723022,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5334999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3912733872731527,
+            0.36783327173303676,
+            0.141861629486084,
+            0.12908384535047743
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8949611783027649,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3916426658630371,
+            0.36742868776674625,
+            0.14140682220458983,
+            0.12944892600730615
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8725167512893677,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3943249066670736,
+            0.36695532622160737,
+            0.13986161549886067,
+            0.12887338708948207
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8715810775756836,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.5835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3952694098154704,
+            0.36685252719455297,
+            0.1387440045674642,
+            0.1285973725495515
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8727471232414246,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6001666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3955547332763672,
+            0.3668071040400752,
+            0.1379052480061849,
+            0.12850590458622685
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8485206961631775,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.39834505716959634,
+            0.36495571842900026,
+            0.13657124837239584,
+            0.12807286580403646
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8486414551734924,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.3993287881215413,
+            0.3643040692364728,
+            0.1356194496154785,
+            0.1279176500108507
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8924452662467957,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.40272604624430336,
+            0.3618090452971282,
+            0.1306009292602539,
+            0.12343566329390915
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8924553394317627,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6668333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4039370854695638,
+            0.36094368828667533,
+            0.12851022084554037,
+            0.12167222764756945
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8913512229919434,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.6835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4069456895192464,
+            0.3596574430112486,
+            0.1259870211283366,
+            0.11941796761971933
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8913315534591675,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4079994519551595,
+            0.3592230337637442,
+            0.1250057856241862,
+            0.1186065673828125
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8953654170036316,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7168333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.41105688412984215,
+            0.3578941062644676,
+            0.12185570398966471,
+            0.11538944950810186
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8953617811203003,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4121065775553385,
+            0.35745504873770256,
+            0.1208505630493164,
+            0.11423413311993634
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8952229619026184,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.41241346995035805,
+            0.3573347868742766,
+            0.12062886555989584,
+            0.11384000424985533
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.895064115524292,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4124426523844401,
+            0.35736704225893373,
+            0.12076911926269532,
+            0.11382030910915798
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.889407217502594,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.7834999999999999,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4149023532867432,
+            0.3562566121419271,
+            0.12007131576538085,
+            0.11322439688223379
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8894575238227844,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4157637278238932,
+            0.3558821784125434,
+            0.11983254750569662,
+            0.11305898030598958
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9051010012626648,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4185322284698486,
+            0.35355055067274305,
+            0.11679925918579101,
+            0.11003615767867476
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.9049500226974487,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4195037047068278,
+            0.3526944478352865,
+            0.11581029891967773,
+            0.10896318223741319
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.893427312374115,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8501666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4218998114267985,
+            0.3496803990116826,
+            0.11454928716023763,
+            0.10769593980577256
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8930827379226685,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4227258841196696,
+            0.3485934080900969,
+            0.11420138676961263,
+            0.1072975723831742
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8853853940963745,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.8835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.42549506823221844,
+            0.34711743107548465,
+            0.11230751673380533,
+            0.105408364755136
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8855916857719421,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.42646271387736,
+            0.34662800541630495,
+            0.11171722412109375,
+            0.10475622106481482
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8835189938545227,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9168333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.42937108675638835,
+            0.3452532167787905,
+            0.11044562657674153,
+            0.10333167182074653
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8827404975891113,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.43038824399312336,
+            0.344792471991645,
+            0.11017497380574544,
+            0.10286896317093461
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.88242506980896,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.43070228894551593,
+            0.34466484917534723,
+            0.11028464635213216,
+            0.10278410734953704
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8819588422775269,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9668333333333332,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4307518005371094,
+            0.3446483046920211,
+            0.11048107147216797,
+            0.1028006942183883
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8933941125869751,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 1.9835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4327333609263102,
+            0.34276145652488427,
+            0.10948603947957357,
+            0.1018614027235243
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8933534026145935,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0001666666666664,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.43341843287150067,
+            0.3420544094509549,
+            0.10923430124918619,
+            0.10162760416666666
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8620424270629883,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0168333333333335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4370107650756836,
+            0.34043956332736547,
+            0.10841782887776692,
+            0.10058398776584201
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8736246824264526,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4418548583984375,
+            0.3391845561839916,
+            0.10681991577148438,
+            0.09829731693974247
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8732851147651672,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4435320218404134,
+            0.3387899469446253,
+            0.10666720072428386,
+            0.09745005854853878
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8690983057022095,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.44642356236775715,
+            0.33757065667046443,
+            0.10575167338053386,
+            0.09594978049949364
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8691120743751526,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.0835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4474073886871338,
+            0.33715763798466436,
+            0.10584115982055664,
+            0.09544135199652778
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8686954379081726,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.1001666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.44769056638081867,
+            0.33705037434895835,
+            0.10624507268269857,
+            0.09527655707465278
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8323162794113159,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.116833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4487398783365885,
+            0.33630618342646845,
+            0.1025631586710612,
+            0.09162267049153645
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8290056586265564,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.1334999999999997,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4491117477416992,
+            0.33600441261574077,
+            0.10129038492838542,
+            0.09015627260561343
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8285306096076965,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.150166666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4491641839345296,
+            0.3359455249927662,
+            0.10094353357950846,
+            0.08955072473596644
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8300975561141968,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.1668333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4491170247395833,
+            0.3359467683015046,
+            0.10107523600260417,
+            0.08940361870659722
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8332622051239014,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.1835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4507174809773763,
+            0.3342704914234303,
+            0.10098196665445963,
+            0.08919748376916956
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8366734981536865,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.2001666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4512941360473633,
+            0.3336867014567057,
+            0.10110015869140625,
+            0.08918550279405382
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8576666712760925,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.216833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.45268964767456055,
+            0.3331999178285952,
+            0.09841779073079428,
+            0.08666599414966725
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8569121956825256,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.2335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4531542778015137,
+            0.333010341503002,
+            0.09763914744059245,
+            0.08585829558195891
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.6785436272621155,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.2501666666666664,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.45535241762797035,
+            0.33234875996907554,
+            0.09575452804565429,
+            0.08392851087782117
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.6936792135238647,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.2668333333333335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.45613346099853513,
+            0.33209738554777923,
+            0.09533246358235677,
+            0.08332381071867766
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8401563763618469,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.2835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4578802267710368,
+            0.32975325407805267,
+            0.09687973658243815,
+            0.08484892668547454
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8729682564735413,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.3001666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.459852663675944,
+            0.32970428466796875,
+            0.09188162485758464,
+            0.08006060564959491
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8726993799209595,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.3168333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4605318864186605,
+            0.3296529699254919,
+            0.09026416142781575,
+            0.07829086868851273
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.875167727470398,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.3335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46069989204406736,
+            0.3297784452085142,
+            0.08970696131388346,
+            0.07745708889431424
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.87450110912323,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.3501666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4607142448425293,
+            0.3298695882161458,
+            0.08978074391682943,
+            0.07720478199146412
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8736080527305603,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.366833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46067657470703127,
+            0.3298938892505787,
+            0.09007498423258463,
+            0.07717658148871528
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8108891844749451,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.3834999999999997,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46261655489603676,
+            0.3247965777361834,
+            0.09838622411092122,
+            0.08520038746021412
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.819444477558136,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.400166666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46533430417378746,
+            0.32405079029224537,
+            0.09510507583618164,
+            0.08244351987485532
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8190211653709412,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.4168333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46637214024861656,
+            0.3240518781873915,
+            0.09323399861653646,
+            0.08082781191225405
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8195215463638306,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.4335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4667150179545085,
+            0.32414540891294125,
+            0.0924489974975586,
+            0.08013952749746817
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7681195735931396,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.4501666666666666,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.46843552589416504,
+            0.32410897148980033,
+            0.08808743158976237,
+            0.07596441198278356
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7919712066650391,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.466833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47114456494649254,
+            0.31950196160210503,
+            0.09133583704630534,
+            0.07916703400788484
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7953367829322815,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.4835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47208770116170246,
+            0.3180389686867043,
+            0.0919939676920573,
+            0.08007642957899305
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7947608828544617,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.5001666666666664,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47237958908081057,
+            0.3174082155580874,
+            0.09228706359863281,
+            0.08067666512948496
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.849521815776825,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.516833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4735332171122233,
+            0.31455891927083335,
+            0.09455916086832682,
+            0.08336520724826389
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8486623167991638,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.5335,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4739250659942627,
+            0.3135210673014323,
+            0.09500767389933268,
+            0.08441393816912615
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.849672794342041,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.5501666666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4740064779917399,
+            0.31315470095034,
+            0.0947365125020345,
+            0.08476333618164063
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.848351240158081,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.5668333333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4739750862121582,
+            0.313054120099103,
+            0.09425640106201172,
+            0.08487062807436342
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7394700646400452,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.5835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47556913693745934,
+            0.3117384875262225,
+            0.09278809229532878,
+            0.08405883223922164
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7361146807670593,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.6001666666666665,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47613460222880044,
+            0.3113006874367043,
+            0.09192673365275066,
+            0.0837392736364294
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8281278610229492,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.616833333333333,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4773567199707031,
+            0.3101746877034505,
+            0.09065678914388021,
+            0.08305746007848669
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.8269482254981995,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.6334999999999997,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.4777720292409261,
+            0.30980309380425347,
+            0.08990627924601237,
+            0.08280272307219329
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.5411959886550903,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.650166666666667,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.47976311047871906,
+            0.3093385908338759,
+            0.08912655512491861,
+            0.08267977679217303
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.5264042019844055,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.6668333333333334,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.480489985148112,
+            0.309208905255353,
+            0.0885138193766276,
+            0.0826557300708912
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 70,
+        "class_id": 5,
+        "confidence": 0.30542927980422974,
+        "marker_id": 1,
+        "first_seen": 2.6668333333333334,
+        "last_seen": 2.6668333333333334,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.4795868237813314,
+            0.3094171029550058,
+            0.08188838958740234,
+            0.08393113878038194
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7552579641342163,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.6835,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.48194708824157717,
+            0.3083051469590929,
+            0.08642142613728841,
+            0.08103391859266493
+        ],
+        "id_rule_applied": 3
+    },
+    {
+        "object_id": 1,
+        "class_id": 2,
+        "confidence": 0.7491214275360107,
+        "marker_id": 1,
+        "first_seen": 0.4835,
+        "last_seen": 2.7001666666666666,
+        "duration": 2.216666666666667,
+        "event": "exit_movement",
+        "bbox": [
+            0.4824621359507243,
+            0.3080006634747541,
+            0.08545777002970377,
+            0.08043037697120949
+        ],
+        "id_rule_applied": null
+    }
+]
