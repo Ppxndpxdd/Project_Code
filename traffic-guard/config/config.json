@@ -1,7 +1,7 @@
 {
     "uniqueId": "eTdm",
     "edgeDeviceId": 3,
-    "video_source": "traffic-guard/src/stream.mp4",
+    "video_source": "traffic-guard/src/output.ts",
     "rtspUrl": "",
     "model_path": "traffic-guard/model/yolo11m.pt",
     "frame_to_edit": 1,

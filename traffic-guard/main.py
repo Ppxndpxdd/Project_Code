@@ -19,10 +19,13 @@ if __name__ == "__main__":
     show_result_input = input("Do you want to display the result images? (y/n): ").lower()
     show_result = show_result_input == 'y'
 
+    extract_image_input = input("Do you want to extract images from the detection log? (y/n): ").lower()
+    extract_image = extract_image_input == 'y'
+
     # Initialize MQTT Subscriber and Publisher
     mqtt_publisher = MqttPublisher(config)
     mqtt_subscriber = MqttSubscriber(config, mqtt_publisher)
-    zone_tracker = ZoneIntersectionTracker(config, show_result=show_result)
+    zone_tracker = ZoneIntersectionTracker(config, show_result=show_result, extract_image=extract_image)
     mqtt_subscriber.zone_tracker = zone_tracker
 
     # 1. Run MaskTool to define zones on the selected frame
@@ -30,5 +33,5 @@ if __name__ == "__main__":
     mask_positions = mask_tool.run()
 
     # 2. Start tracking intersections
-    tracker = ZoneIntersectionTracker(config, show_result=show_result)
+    tracker = ZoneIntersectionTracker(config, show_result=show_result, extract_image=extract_image)
     tracker.track_intersections(config['video_source'], config['frame_to_edit'])

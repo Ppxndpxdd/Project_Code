@@ -178,6 +178,34 @@ class MarkerZone:
         y = img.shape[0] - 20
         cv2.putText(img, mode_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
 
+    def delete_marker_by_id(self, marker_id: int) -> None:
+        """
+        Deletes the marker with the given marker_id from markers and mask_positions.
+        Also removes any applied rule entries associated with the marker from the rule.json config.
+        """
+        # Delete from in-memory markers and mask_positions.
+        if marker_id in self.markers:
+            del self.markers[marker_id]
+        self.mask_positions = [m for m in self.mask_positions if m.get('marker_id') != marker_id]
+        # Delete applied rules from rule config (assumed at ../config/rule.json).
+        import json
+        rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+        try:
+            with open(rule_config_path, 'r') as f:
+                rule_config = json.load(f)
+            for rule in rule_config.get('rules', []):
+                if 'ruleApplied' in rule:
+                    rule['ruleApplied'] = [applied for applied in rule['ruleApplied'] 
+                                        if applied.get('markerId') != marker_id]
+            with open(rule_config_path, 'w') as f:
+                json.dump(rule_config, f, indent=4)
+            logging.info(f"Deleted applied rules for marker_id {marker_id} from rule config.")
+        except Exception as e:
+            logging.error(f"Error deleting applied rules for marker_id {marker_id}: {e}")
+
+        self.save_mask_positions()
+        logging.info(f"Marker {marker_id} deleted.")
+
     def run(self) -> List[Dict[str, Any]]:
         cv2.imshow('Target Frame', self.target_frame)
         cv2.setMouseCallback('Target Frame', self.mouse_callback)
@@ -202,6 +230,7 @@ class MarkerZone:
                     marker = self.markers.get(self.selected_marker_id, {})
                     marker_type = marker.get('type')
                     # Record deletion action with a deep copy and clear redo stack
+                    self.delete_marker_by_id(self.selected_marker_id)
                     self.undo_stack.append({'action': 'delete', 'marker': copy.deepcopy(marker)})
                     self.redo_stack.clear()
                     if marker_type == 'zone':
@@ -314,25 +343,29 @@ class MarkerZone:
 
                         # Assign rule name, applied id, and updated jsonParams to marker and update marker_positions
                         self.markers[self.selected_marker_id]['rule'] = matched_rule.get("name")
-                        self.markers[self.selected_marker_id]['applied_id'] = matched_rule.get("id")
                         self.markers[self.selected_marker_id]['jsonParams'] = updated_params
                         for i, m in enumerate(self.mask_positions):
                             if m.get('marker_id') == self.selected_marker_id:
                                 self.mask_positions[i]['rule'] = matched_rule.get("name")
-                                self.mask_positions[i]['applied_id'] = matched_rule.get("id")
                                 self.mask_positions[i]['jsonParams'] = updated_params
                         logging.info(f"Assigned rule {matched_rule.get('name')} (id: {matched_rule.get('id')}) to marker {self.selected_marker_id} with parameters {updated_params}")
 
+                        # Auto-increment the applied rule ID
+                        last_applied_id = 0
+                        if "ruleApplied" in matched_rule and matched_rule["ruleApplied"]:
+                            last_applied_id = max(entry.get("id", 0) for entry in matched_rule["ruleApplied"])
+                        new_applied_id = last_applied_id + 1
+
                         # Create a new record for ruleApplied with the same rule id and updated jsonParams
-                        new_rule_applied = {
-                            "id": matched_rule.get("id"),
+                        rule_entry = {
+                            "id": new_applied_id,
                             "markerId": self.selected_marker_id,
                             "jsonParams": json.dumps(updated_params)
                         }
                         if "ruleApplied" in matched_rule:
-                            matched_rule["ruleApplied"].append(new_rule_applied)
+                            matched_rule["ruleApplied"].append(rule_entry)
                         else:
-                            matched_rule["ruleApplied"] = [new_rule_applied]
+                            matched_rule["ruleApplied"] = [rule_entry]
 
                         # Write back the updated rule.json file
                         with open(rule_config_path, 'w') as f:
@@ -577,7 +610,32 @@ class MarkerZone:
                 self.arrows[marker_id] = marker.get('line_points', [])
             self.markers[marker_id] = marker
             self.mask_positions.append(marker)
-            # Push opposite action for redo (i.e., re-delete)
+            # Restore applied rules in rule.json if the marker had an assigned rule
+            if 'rule' in marker and marker.get("rule"):
+                rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+                try:
+                    with open(rule_config_path, 'r') as f:
+                        rule_config = json.load(f)
+                    # Build the rule entry with same format as before:
+                    # {"id": 1, "markerId": 1, "jsonParams": "{\"confidence\": 0.1}"}
+                    rule_entry = {
+                        "id": marker.get("id") or marker.get("marker_id"),
+                        "markerId": marker.get("marker_id"),
+                        "jsonParams": json.dumps(marker.get("jsonParams", {}))
+                    }
+                    # Iterate through rules and restore the rule entry where the rule name matches marker['rule']
+                    for rule in rule_config.get("rules", []):
+                        if rule.get("name", "").lower() == marker.get("rule", "").lower():
+                            if "ruleApplied" not in rule:
+                                rule["ruleApplied"] = []
+                            # Only add rule_entry if one with this markerId does not already exist
+                            if not any(entry.get("markerId") == marker.get("marker_id") for entry in rule["ruleApplied"]):
+                                rule["ruleApplied"].append(rule_entry)
+                    with open(rule_config_path, 'w') as f:
+                        json.dump(rule_config, f, indent=4)
+                    logging.info(f"Restored applied rule for marker_id {marker_id} in rule config.")
+                except Exception as e:
+                    logging.error(f"Error restoring rule for marker_id {marker_id}: {e}")
             self.redo_stack.append({'action': 'delete', 'marker': copy.deepcopy(marker)})
             logging.info(f"Undid deletion: Restored marker_id={marker_id}")
         self.save_mask_positions()
@@ -610,6 +668,19 @@ class MarkerZone:
                 self.arrows.pop(marker_id, None)
             self.markers.pop(marker_id, None)
             self.mask_positions = [m for m in self.mask_positions if m.get('marker_id') != marker_id]
+            # Delete applied rules from rule config (assumed at ../config/rule.json)
+            rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+            try:
+                with open(rule_config_path, 'r') as f:
+                    rule_config = json.load(f)
+                for rule in rule_config.get('rules', []):
+                    if 'ruleApplied' in rule:
+                        rule['ruleApplied'] = [entry for entry in rule['ruleApplied'] if entry.get("markerId") != marker_id]
+                with open(rule_config_path, 'w') as f:
+                    json.dump(rule_config, f, indent=4)
+                logging.info(f"Deleted applied rules for marker_id {marker_id} from rule config on redo.")
+            except Exception as e:
+                logging.error(f"Error deleting applied rules for marker_id {marker_id} on redo: {e}")
             self.undo_stack.append({'action': 'delete', 'marker': copy.deepcopy(marker)})
             logging.info(f"Redid deletion: Removed marker_id={marker_id}")
         self.save_mask_positions()

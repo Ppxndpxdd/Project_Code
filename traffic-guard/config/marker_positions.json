@@ -1,44 +1,33 @@
 [
     {
         "marker_id": 1,
-        "type": "movement",
+        "type": "zone",
         "status": "activate",
-        "polygon_points": [
+        "points": [
             [
-                383,
-                532
+                465,
+                624
             ],
             [
-                808,
-                572
+                624,
+                566
             ],
             [
-                1108,
-                325
+                905,
+                584
             ],
             [
-                885,
-                318
+                711,
+                711
             ],
             [
-                383,
-                532
+                465,
+                624
             ]
         ],
-        "line_points": [
-            [
-                967,
-                325
-            ],
-            [
-                612,
-                546
-            ]
-        ],
-        "rule": "Wrong Way",
-        "applied_id": 3,
+        "rule": "No Parking",
         "jsonParams": {
-            "sub_rules": "opposite"
+            "duration": 1.0
         }
     }
 ]

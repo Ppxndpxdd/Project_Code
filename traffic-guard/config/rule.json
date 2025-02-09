@@ -14,7 +14,13 @@
             "markerType": "zone",
             "status": "active",
             "jsonParams": "{\"duration\": 5.0}",
-            "ruleApplied": []
+            "ruleApplied": [
+                {
+                    "id": 1,
+                    "markerId": 1,
+                    "jsonParams": "{\"duration\": 1.0}"
+                }
+            ]
         },
         {
             "id": 3,
@@ -22,13 +28,7 @@
             "markerType": "movement",
             "status": "active",
             "jsonParams": "{\"sub_rules\": \"opposite\", \"right\", \"left\"}",
-            "ruleApplied": [
-                {
-                    "id": 3,
-                    "markerId": 1,
-                    "jsonParams": "{\"sub_rules\": \"opposite\"}"
-                }
-            ]
+            "ruleApplied": []
         }
     ]
 }

@@ -16,10 +16,12 @@ from ultralytics import YOLO
 class ZoneIntersectionTracker:
     """Tracks objects in a video and detects intersections with defined zones."""
 
-    def __init__(self, config: Dict[str, Any], show_result: bool = True):
+# Update the class initialization to filter for cars only (class ID 2)
+    def __init__(self, config: Dict[str, Any], show_result: bool = True, extract_image: bool = True):
         """Initializes the ZoneIntersectionTracker with configuration."""
         self.config = config
         self.show_result = show_result
+        self.extract_image = extract_image
 
         # Load rule configuration from rule.json.
         self.rule_config = self.load_rule_config()
@@ -97,7 +99,7 @@ class ZoneIntersectionTracker:
 
         # Load YOLO model
         self.model = YOLO(model_path).to(self.device)
-        self.vehicle_class_ids = [2, 3, 5, 7]  # Vehicle classes in COCO dataset
+        self.vehicle_class_ids = [2,5,7]  # Vehicle classes in COCO dataset, car only
 
         # MQTT configuration
         mqtt_config = {
@@ -134,7 +136,7 @@ class ZoneIntersectionTracker:
             f'{uniqueId}/rule/update', self.on_update_rule_applied
         )
         self.mqtt_subscriber.mqtt_client.message_callback_add(
-            f'{uniqueId}/rule/delete', self.on_delete_rule_applied
+            f'{uniqueId}/rule/delete', self.on_delete_marker
         )
         
     def load_rule_config(self) -> Dict[str, Any]:
@@ -616,6 +618,117 @@ class ZoneIntersectionTracker:
         h_temp = (abs(y1 - y2))/ih
         return [float(x_temp), float(y_temp), float(w_temp), float(h_temp)]
 
+    def get_frame_from_timestamp(self, video_path: str, timestamp: float) -> np.ndarray:
+        """
+        Retrieves a frame from the video at a specific timestamp.
+        """
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            logging.error(f"Could not open video source '{video_path}'.")
+            return None
+
+        # Convert timestamp to milliseconds
+        timestamp_ms = timestamp * 1000
+        cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_ms)
+
+        ret, frame = cap.read()
+        if not ret:
+            logging.warning(f"Could not retrieve frame at timestamp {timestamp} from '{video_path}'.")
+            cap.release()
+            return None
+
+        cap.release()
+        return frame
+
+    def crop_object_from_frame(self, frame: np.ndarray, bbox: Tuple[float, float, float, float]) -> np.ndarray:
+        """
+        Crops the object from the frame using the bounding box coordinates.
+        """
+        try:
+            x_center_norm, y_center_norm, width_norm, height_norm = bbox
+            frame_height, frame_width = frame.shape[:2]
+
+            # Scale normalized coordinates back to pixel values
+            x_center = x_center_norm * frame_width
+            y_center = y_center_norm * frame_height
+            width = width_norm * frame_width
+            height = height_norm * frame_height
+
+            # Calculate top-left and bottom-right corners of the bounding box
+            x1 = int(x_center - width / 2)
+            y1 = int(y_center - height / 2)
+            x2 = int(x_center + width / 2)
+            y2 = int(y_center + height / 2)
+
+            # Ensure coordinates are within frame boundaries
+            x1 = max(0, x1)
+            y1 = max(0, y1)
+            x2 = min(frame_width - 1, x2)
+            y2 = min(frame_height - 1, y2)
+
+            # Crop the object from the frame
+            cropped_object = frame[y1:y2, x1:x2]
+            return cropped_object
+        except Exception as e:
+            logging.error(f"Error cropping object from frame: {e}")
+            return None
+        
+    def save_cropped_image(self, cropped_object: np.ndarray, output_path: str) -> None:
+        """
+        Saves the cropped image to the specified output path.
+        """
+        try:
+            if cropped_object is not None:
+                cv2.imwrite(output_path, cropped_object)
+                logging.info(f"Cropped image saved to {output_path}")
+            else:
+                logging.warning("No cropped object to save.")
+        except Exception as e:
+            logging.error(f"Error saving cropped image: {e}")
+
+    def process_detection_entry(self, detection_entry: DetectionEntry, video_path: str, output_dir: str) -> None:
+        """
+        Retrieves the frame, crops the object, adds event name, and saves the cropped image.
+        """
+        if not self.extract_image:
+            return # Skip image extraction if disabled
+        
+        try:
+            # Use last_seen for timestamp to extract image
+            timestamp = detection_entry.last_seen
+            # Retrieve frame from video
+            frame = self.get_frame_from_timestamp(video_path, timestamp)
+            if frame is None:
+                logging.warning(f"Could not retrieve frame for object {detection_entry.object_id} at timestamp {timestamp}")
+                return
+
+            # Crop object from frame
+            cropped_object = self.crop_object_from_frame(frame, detection_entry.bbox)
+            if cropped_object is None:
+                logging.warning(f"Could not crop object {detection_entry.object_id} from frame.")
+                return
+
+            # Add object_id and event name to the top-right corner of the cropped image
+            event_name = detection_entry.event
+            object_id = detection_entry.object_id
+            text = f"ID: {object_id} | Event: {event_name}"
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.7
+            font_color = (0, 255, 0)  # Green color
+            thickness = 2
+            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+            text_x = cropped_object.shape[1] - text_size[0] - 10
+            text_y = 20  # Position from the top
+            cv2.putText(cropped_object, text, (text_x, text_y), font, font_scale, font_color, thickness)
+
+            # Save cropped image
+            output_filename = f"object_{object_id}_marker_{detection_entry.marker_id}_{event_name}.jpg"
+            output_path = os.path.join(output_dir, output_filename)
+            self.save_cropped_image(cropped_object, output_path)
+
+        except Exception as e:
+            logging.error(f"Error processing detection entry: {e}")
+
     def track_intersections(self, video_path: str, frame_to_edit: int):
 
         # Check if the input is a YouTube URL
@@ -627,7 +740,7 @@ class ZoneIntersectionTracker:
 
             # Extract the best video stream URL using yt-dlp
             ydl_opts = {
-                'format': 'bestvideo[ext=mp4]/best',
+                'format': 'bestvideo[ext=ts]/best',
                 'quiet': True,
                 'no_warnings': True,
             }
@@ -675,36 +788,35 @@ class ZoneIntersectionTracker:
             if not ret:
                 break
 
-            # Rest of the tracking logic remains unchanged
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
-            results = self.model.track(frame, verbose=False, persist=True, stream=True, tracker=self.tracker_config, device=self.device)
+            results = self.model.track(frame, verbose=False, persist=True, stream=True, tracker=self.tracker_config, device=self.device, classes=self.vehicle_class_ids)
 
-            # Draw zones and arrows on the current frame
             self.draw_zones(frame)
             self.draw_arrows(frame)
 
             for result in results:
                 boxes = result.boxes
 
-                # Check if tracking IDs are available
                 if boxes.id is not None:
                     track_ids = boxes.id.cpu().numpy()
                 else:
                     continue
 
-                for i, (bbox, conf, class_id, track_id) in enumerate(
+                for i, (bbox_xyxy, conf, class_id, track_id) in enumerate(
                         zip(boxes.xyxy, boxes.conf.cpu().numpy(), boxes.cls.cpu().numpy(), track_ids)):
-                    # Filter out non-vehicle objects
                     if int(class_id) not in self.vehicle_class_ids:
                         continue
 
-                    bbox_np = bbox.cpu().numpy()
+                    bbox_xyxy_np = bbox_xyxy.cpu().numpy()
                     track_id = int(track_id)
+
+                    # Convert xyxy to xywh immediately
+                    bbox_xywh = self.xyxy_to_xywh(float(bbox_xyxy_np[0]), float(bbox_xyxy_np[1]), float(bbox_xyxy_np[2]), float(bbox_xyxy_np[3]), frame_width, frame_height)
+                    bbox_xywh_np = np.array(bbox_xywh) # Convert bbox_xywh to numpy array
 
                     max_iou = 0
                     intersecting_marker_id = None
 
-                    # Initialize tracked_objects entry if it doesn't exist
                     if track_id not in self.tracked_objects:
                         self.tracked_objects[track_id] = {
                             'class_id': int(class_id),
@@ -712,17 +824,15 @@ class ZoneIntersectionTracker:
                         }
 
                     for marker_id, polygon in self.zones.items():
-                        intersects, iou = self.intersects(bbox_np, polygon)
+                        intersects, iou = self.intersects(bbox_xyxy_np, polygon)
 
                         if iou > max_iou:
                             max_iou = iou
                             intersecting_marker_id = marker_id if intersects else None
 
-                        # Handle marker entry and exit logic
                         marker_entry_exists = any(entry['marker_id'] == marker_id for entry in
-                                                 self.tracked_objects[track_id]['marker_entries'])
+                                                self.tracked_objects[track_id]['marker_entries'])
                         if intersects and not marker_entry_exists:
-                            # Object just entered the marker zone
                             entry = {
                                 'marker_id': int(marker_id),
                                 'first_seen': float(timestamp),
@@ -730,7 +840,6 @@ class ZoneIntersectionTracker:
                             }
                             self.tracked_objects[track_id]['marker_entries'].append(entry)
 
-                            # Prepare entry message
                             detection_entry = DetectionEntry(
                                 object_id=track_id,
                                 class_id=int(class_id),
@@ -740,19 +849,17 @@ class ZoneIntersectionTracker:
                                 last_seen=float(timestamp),
                                 duration=None,
                                 event='enter',
-                                bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
+                                bbox=bbox_xywh  # Use xywh format
                             )
-                            # Publish the detection_entry to EMQX
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
                             self.mqtt_publisher.send_incident(detection_entry)
-                            
+                            self.process_detection_entry(detection_entry, video_path, self.output_dir)
+
                         elif not intersects and marker_entry_exists:
-                            # Object just exited the marker zone
                             for entry in self.tracked_objects[track_id]['marker_entries']:
                                 if entry['marker_id'] == marker_id and entry['last_seen'] is None:
                                     entry['last_seen'] = float(timestamp)
-                                    # Log the marker entry only when the object leaves
                                     detection_entry = DetectionEntry(
                                         object_id=track_id,
                                         class_id=int(class_id),
@@ -762,27 +869,25 @@ class ZoneIntersectionTracker:
                                         last_seen=float(timestamp),
                                         duration=float(timestamp - entry['first_seen']),
                                         event='exit',
-                                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                                    )
+                                        bbox=bbox_xywh  # Use xywh format
+                                    )
                                     self.detection_log.append(detection_entry)
-                                    self.save_detection_log()  # Save when the object leaves the marker zone
-
-                                    # Publish the detection_entry to EMQX
+                                    self.save_detection_log()
                                     self.mqtt_publisher.send_incident(detection_entry)
+                                    self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                     # Handle movement markers
                     for marker_id, arrow_data in self.arrows.items():
                         polygon_points = arrow_data['polygon_points']
                         line_points = arrow_data['line_points']
-                        intersects_movement, iou_movement = self.intersects(bbox_np, polygon_points)
+                        intersects_movement, iou_movement = self.intersects(bbox_xyxy_np, polygon_points)
                         if iou_movement > max_iou:
                             max_iou = iou_movement
                             intersecting_marker_id = marker_id if intersects_movement else None
 
-                        # Handle movement entry and exit logic
                         marker_entry_exists = any(entry['marker_id'] == marker_id for entry in
-                                                 self.tracked_objects[track_id]['marker_entries'])
+                                                self.tracked_objects[track_id]['marker_entries'])
                         if intersects_movement and not marker_entry_exists:
-                            # Object just entered the movement zone
                             entry = {
                                     'marker_id': int(marker_id),
                                     'type': 'movement',  # Add type
@@ -792,7 +897,6 @@ class ZoneIntersectionTracker:
                                 }
                             self.tracked_objects[track_id]['marker_entries'].append(entry)
 
-                            # Prepare entry message
                             detection_entry = DetectionEntry(
                                 object_id=track_id,
                                 class_id=int(class_id),
@@ -802,30 +906,26 @@ class ZoneIntersectionTracker:
                                 last_seen=float(timestamp),
                                 duration=None,
                                 event='enter_movement',
-                                bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                            )
-                            # Publish the detection_entry to EMQX
+                                bbox=bbox_xywh  # Use xywh format
+                            )
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
                             self.mqtt_publisher.send_incident(detection_entry)
-                        
+                            self.process_detection_entry(detection_entry, video_path, self.output_dir)
+
                         elif intersects_movement:
-                            # Update trajectory for existing entry
                             for entry in self.tracked_objects[track_id]['marker_entries']:
                                 if entry['marker_id'] == marker_id and entry['last_seen'] is None:
-                                    # Append current position (center of bbox)
-                                    x_center = (bbox_np[0] + bbox_np[2]) / 2
-                                    y_center = (bbox_np[1] + bbox_np[3]) / 2
+                                    x_center = (bbox_xyxy_np[0] + bbox_xyxy_np[2]) / 2
+                                    y_center = (bbox_xyxy_np[1] + bbox_xyxy_np[3]) / 2
                                     entry['trajectory'].append((x_center, y_center))
-                                    # Keep only the last 10 points to avoid memory issues
                                     if len(entry['trajectory']) > 10:
                                         entry['trajectory'] = entry['trajectory'][-10:]
-                            
+
                         elif not intersects_movement and marker_entry_exists:
-                            # Object just exited the movement zone
                             for entry in self.tracked_objects[track_id]['marker_entries']:
                                 if entry['marker_id'] == marker_id and entry['last_seen'] is None:
                                     entry['last_seen'] = float(timestamp)
-                                    # Log the marker entry only when the object leaves
                                     detection_entry = DetectionEntry(
                                         object_id=track_id,
                                         class_id=int(class_id),
@@ -835,24 +935,24 @@ class ZoneIntersectionTracker:
                                         last_seen=float(timestamp),
                                         duration=float(timestamp - entry['first_seen']),
                                         event='exit_movement',
-                                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                                    )
+                                        bbox=bbox_xywh  # Use xywh format
+                                    )
                                     self.detection_log.append(detection_entry)
-                                    self.save_detection_log()  # Save when the object leaves the movement zone
-
-                                    # Publish the detection_entry to EMQX
+                                    self.save_detection_log()
                                     self.mqtt_publisher.send_incident(detection_entry)
+                                    self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                     # Check for no_parking and no_entry events
-                    self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
-                    self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
-                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
+                    self._check_no_parking(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
+                    self._check_no_entry(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
+                    self._check_wrong_way(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
 
                     # Determine color based on time in zone
                     time_in_zone = self._get_time_in_zone(track_id, timestamp)
                     bbox_color = self._get_bbox_color(time_in_zone)
 
                     # Draw bounding box
-                    x1, y1, x2, y2 = bbox_np.astype(int)
+                    x1, y1, x2, y2 = bbox_xyxy_np.astype(int)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), bbox_color, 2)
 
                     # Draw object ID, IoU, time in zone, and marker info
@@ -865,9 +965,8 @@ class ZoneIntersectionTracker:
                     cv2.putText(frame, label1, (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
                     cv2.putText(frame, label2, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
 
-                    # Print debugging info
                     logging.debug(
-                        f"Object {track_id}: bbox={bbox_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, marker={intersecting_marker_id}")
+                        f"Object {track_id}: bbox={bbox_xyxy_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, marker={intersecting_marker_id}")
 
             if self.show_result:
                 cv2.imshow('Detection', frame)
@@ -880,10 +979,10 @@ class ZoneIntersectionTracker:
         if self.show_result:
             cv2.destroyAllWindows()
 
-        # Disconnect MQTT client
         self.mqtt_publisher.mqtt_handler.disconnect()
+        self.process_detection_entry(detection_entry, video_path, self.output_dir)
         logging.info("Disconnected from EMQX.")
-
+        
     def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, frame_width, frame_height):
         """Checks if an object has exceeded the no_parking duration in a zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
@@ -907,6 +1006,7 @@ class ZoneIntersectionTracker:
                 time_in_zone = self._get_time_in_zone(track_id, timestamp)
                 if time_in_zone > parking_duration_threshold and 'threshold_logged' not in marker_entry:
                     logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_id}")
+                    bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
                     detection_entry = DetectionEntry(
                         object_id=track_id,
                         class_id=int(class_id),
@@ -917,13 +1017,14 @@ class ZoneIntersectionTracker:
                         last_seen=float(timestamp),
                         duration=float(time_in_zone),
                         event='no_parking',
-                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
+                        bbox=bbox_xywh
                     )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
                     self.mqtt_publisher.send_incident(detection_entry)
                     marker_entry['threshold_logged'] = True
-
+                    self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
+                    
     def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, frame_width, frame_height):
         """Checks if an object is in a no_entry zone using marker IDs from rule.json and prevents duplicate MQTT messages."""
         # Build set of marker IDs registered as no_entry zones from rule.json
@@ -944,6 +1045,7 @@ class ZoneIntersectionTracker:
             # event hasn't been logged yet and no MQTT message has been sent.
             if marker_id in no_entry_zone_ids and marker_entry.get('last_seen') is None and not marker_entry.get('mqtt_sent', False):
                 logging.info(f"Object {track_id} is in a no_entry zone: {marker_id}")
+                bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
                 rule_info = self.get_rule_for_marker(marker_id, 'no entry')
                 detection_entry = DetectionEntry(
                     object_id=track_id,
@@ -955,13 +1057,14 @@ class ZoneIntersectionTracker:
                     last_seen=float(timestamp),
                     duration=None,
                     event='no_entry',
-                    bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
+                    bbox=bbox_xywh
                 )
                 self.detection_log.append(detection_entry)
                 self.save_detection_log()
                 self.mqtt_publisher.send_incident(detection_entry)
                 # Mark this entry to prevent duplicate MQTT messages
                 marker_entry['mqtt_sent'] = True
+                self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
                 
     def calculate_direction(self, start_point, end_point):
         """Calculate the direction vector from start to end point."""
@@ -1050,11 +1153,13 @@ class ZoneIntersectionTracker:
                         last_seen=float(timestamp),
                         duration=None,
                         event=event_type,
-                        bbox=self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)                    )
+                        bbox=bbox_np,
+                    )
                     self.detection_log.append(detection_entry)
                     self.save_detection_log()
                     self.mqtt_publisher.send_incident(detection_entry)
                     marker_entry['wrong_way_logged'] = True
+                    self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
 
     def _get_time_in_zone(self, track_id: int, timestamp: float) -> float:
         """Calculates the time an object has spent in any zone."""
