@@ -1,13 +1,13 @@
 {
     "unique_id": "eTdm",
-    "edge_device_id": 8,
-    "video_source": "traffic-guard/src/output.mp4",
-    "rtsp_url": "rtsp2-link.com",
+    "edge_device_id": 1,
+    "rtsp_url": "traffic-guard/src/output.mp4",
     "model_path": "traffic-guard/model/yolo11m.pt",
     "frame_to_edit": 1,
     "mask_json_path": "traffic-guard/config/marker_positions.json",
     "output_dir": "output",
     "output_file": "detection_log.json",
+    "detection_log": "traffic-guard/tools/output/detection_log.json",
     "tracker_config": "bytetrack.yaml",
     "highlight_radius": 10,
     "point_radius": 5,
@@ -21,6 +21,7 @@
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
     "detection_topic": "detection",
     "heartbeat_topic": "keep_alive",
+    "heartbeat_interval": 30,
     "log_topic": "log",
     "subscribe_topics": [
         "create",
@@ -32,5 +33,7 @@
         "rule/create",
         "rule/update",
         "rule/delete"
-    ]
+    ],
+    "edgeDeviceId": "",
+    "rtspUrl": ""
 }

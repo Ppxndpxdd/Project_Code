@@ -15,6 +15,9 @@ class MqttPublisher:
         self.edge_device_id = config.get('edge_device_id', 'default_id') 
         self.incident_topic = f"{self.config.get('detection_topic')}/{self.unique_id}"
         self.heartbeat_topic =  f"{config.get('heartbeat_topic', 'keep_alive')}/{self.unique_id}" # Add unique_id to heartbeat topic
+        self.heartbeat_interval = config.get('heartbeat_interval', 30)
+        self.log_topic = config.get('log_topic', 'log')
+        
         # Start the heartbeat thread
         self.heartbeat_thread = threading.Thread(target=self.send_heartbeat, daemon=True)
         self.heartbeat_thread.start()
@@ -59,21 +62,22 @@ class MqttPublisher:
         """Sends a heartbeat message to the MQTT broker at regular intervals."""
         while True:
             try:
-                # Use self.edge_device_id to get the current value
+                # Reload edge_device_id in real-time
                 self.edge_device_id = self.config.get('edge_device_id', 'default_id')
                 heartbeat_message = f"{self.edge_device_id}"
-                # Generate the heartbeat topic dynamically
-                topic = self.heartbeat_topic # Use the attribute directly
+                topic = self.get_heartbeat_topic()
                 logging.info(f"Sending heartbeat to topic: {topic}")
                 self.mqtt_handler.publish(topic, json.dumps(heartbeat_message))
                 logging.info("Heartbeat sent successfully.")
             except Exception as e:
                 logging.error(f"Failed to send heartbeat: {e}")
-            time.sleep(30)  # Send heartbeat every 30 seconds
+            # use the configured heartbeat_interval instead of hard-coded 30 sec
+            time.sleep(self.heartbeat_interval)
             
-    def publish(self, topic, payload):
+    def publish_log(self, payload):
         """Publishes a message to the MQTT broker."""
         try:
+            topic = f"{self.unique_id}/{self.log_topic}"
             self.mqtt_handler.publish(topic, payload)
         except Exception as e:
             logging.error(f"Failed to publish message: {e}")

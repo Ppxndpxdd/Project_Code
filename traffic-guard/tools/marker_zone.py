@@ -11,7 +11,7 @@ import copy
 class MarkerZone:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.video_source = config['video_source']
+        self.video_source = config['rtsp_url']
         self.frame_to_edit = config['frame_to_edit']
         self.mask_json_path = config.get('mask_json_path', None)
 
@@ -149,30 +149,32 @@ class MarkerZone:
         logging.info("No marker selected.")
 
     def draw_selected_marker_info(self, img: np.ndarray):
-        """Draws the selected marker's information on the top right of the screen by reading rule info from rule.json."""
+        """Draws the selected marker's information on the top right of the screen,
+        reading rule info from rule.json and updating in real-time.
+        """
         if self.selected_marker_id is not None and self.selected_marker_id in self.markers:
             marker_data = self.markers[self.selected_marker_id]
             info_lines = [
                 f"Selected Marker: {self.selected_marker_id}",
                 f"Type: {marker_data.get('type', 'N/A')}"
             ]
-            applied_ids = marker_data.get("applied_ids", [])
+            rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
             rule_names = []
-            if applied_ids:
-                rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
-                try:
-                    with open(rule_config_path, 'r') as f:
-                        rule_config = json.load(f)
-                    for rule in rule_config.get("rules", []):
-                        for applied in rule.get("rule_applied", []):
-                            if applied.get("id") in applied_ids:
+            try:
+                with open(rule_config_path, 'r') as f:
+                    rule_config = json.load(f)
+                for rule in rule_config.get("rules", []):
+                    if 'rule_applied' in rule:
+                        for applied in rule["rule_applied"]:
+                            if applied.get("marker_id") == self.selected_marker_id:
                                 rule_names.append(rule.get("name"))
-                except Exception as e:
-                    logging.error(f"Error loading rule.json: {e}")
-                    rule_names.append("Error loading rule")
+            except Exception as e:
+                logging.error(f"Error loading rule.json: {e}")
+                rule_names.append("Error loading rule")
+    
             rule_info_line = "Rules: " + (", ".join(rule_names) if rule_names else "None")
             info_lines.append(rule_info_line)
-
+    
             # Render the info overlay
             x = img.shape[1] - 250
             y = 20
@@ -208,8 +210,8 @@ class MarkerZone:
             with open(rule_config_path, 'r') as f:
                 rule_config = json.load(f)
             for rule in rule_config.get('rules', []):
-                if 'rule_applied' in rule:
-                    rule['rule_applied'] = [applied for applied in rule['rule_applied'] 
+                if 'ruleApplied' in rule:
+                    rule['ruleApplied'] = [applied for applied in rule['ruleApplied'] 
                                         if applied.get('markerId') != marker_id]
             with open(rule_config_path, 'w') as f:
                 json.dump(rule_config, f, indent=4)
@@ -364,12 +366,12 @@ class MarkerZone:
                                 return
 
                     new_rule_applied = {
-                        "id": applied_id,
+                        "applied_id": applied_id,
                         "marker_id": self.selected_marker_id,
                         "json_params": new_json_params
                     }
                     if "rule_applied" in matched_rule:
-                        if any(applied.get("id") == applied_id for applied in matched_rule["rule_applied"]):
+                        if any(applied.get("applied_id") == applied_id for applied in matched_rule["rule_applied"]):
                             logging.error(f"Applied rule with id {applied_id} already exists for rule {rule_id}.")
                             return
                         matched_rule["rule_applied"].append(new_rule_applied)
@@ -631,31 +633,36 @@ class MarkerZone:
             self.markers[marker_id] = marker
             self.mask_positions.append(marker)
             # Restore applied rules in rule.json if the marker had an assigned rule
-            if 'rule' in marker and marker.get("rule"):
-                rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
-                try:
-                    with open(rule_config_path, 'r') as f:
-                        rule_config = json.load(f)
-                    # Build the rule entry with same format as before:
-                    # {"id": 1, "markerId": 1, "jsonParams": "{\"confidence\": 0.1}"}
-                    rule_entry = {
-                        "id": marker.get("id") or marker.get("marker_id"),
-                        "markerId": marker.get("marker_id"),
-                        "jsonParams": json.dumps(marker.get("jsonParams", {}))
-                    }
-                    # Iterate through rules and restore the rule entry where the rule name matches marker['rule']
+            rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+            try:
+                with open(rule_config_path, 'r') as f:
+                    rule_config = json.load(f)
+
+                # Iterate through rules and restore the rule entry where the rule name matches marker['rule']
+                for rule in rule_config.get("rules", []):
+                    if 'rule_applied' in rule:
+                        for applied in rule["rule_applied"]:
+                            if applied.get("marker_id") == marker.get("marker_id"):
+                                # Rule already applied, skip
+                                continue
+                    else:
+                        rule["rule_applied"] = []
+
+                    # Find the rule that was applied to this marker
                     for rule in rule_config.get("rules", []):
-                        if rule.get("name", "").lower() == marker.get("rule", "").lower():
-                            if "rule_applied" not in rule:
-                                rule["rule_applied"] = []
-                            # Only add rule_entry if one with this markerId does not already exist
-                            if not any(entry.get("markerId") == marker.get("marker_id") for entry in rule["rule_applied"]):
-                                rule["rule_applied"].append(rule_entry)
-                    with open(rule_config_path, 'w') as f:
-                        json.dump(rule_config, f, indent=4)
-                    logging.info(f"Restored applied rule for marker_id {marker_id} in rule config.")
-                except Exception as e:
-                    logging.error(f"Error restoring rule for marker_id {marker_id}: {e}")
+                        if 'rule_applied' in rule:
+                            for applied in rule["rule_applied"]:
+                                if applied.get("marker_id") == marker.get("marker_id"):
+                                    # Rule already applied, skip
+                                    continue
+                        else:
+                            rule["rule_applied"] = []
+
+                with open(rule_config_path, 'w') as f:
+                    json.dump(rule_config, f, indent=4)
+                logging.info(f"Restored applied rule for marker_id {marker_id} in rule config.")
+            except Exception as e:
+                logging.error(f"Error restoring rule for marker_id {marker_id}: {e}")
             self.redo_stack.append({'action': 'delete', 'marker': copy.deepcopy(marker)})
             logging.info(f"Undid deletion: Restored marker_id={marker_id}")
         self.save_mask_positions()
@@ -695,7 +702,7 @@ class MarkerZone:
                     rule_config = json.load(f)
                 for rule in rule_config.get('rules', []):
                     if 'rule_applied' in rule:
-                        rule['rule_applied'] = [entry for entry in rule['rule_applied'] if entry.get("markerId") != marker_id]
+                        rule['rule_applied'] = [entry for entry in rule['rule_applied'] if entry.get("marker_id") != marker_id]
                 with open(rule_config_path, 'w') as f:
                     json.dump(rule_config, f, indent=4)
                 logging.info(f"Deleted applied rules for marker_id {marker_id} from rule config on redo.")

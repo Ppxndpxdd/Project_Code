@@ -11,7 +11,6 @@ from tools.mqtt_publisher import MqttPublisher
 class MqttSubscriber:
     def __init__(self, config: Dict[str, Any], mqtt_publisher: MqttPublisher):
         self.lock = threading.Lock()
-        self.zone_tracker = None
         self.emqx_host = config.get('mqtt_broker', 'localhost')
         self.emqx_port = config.get('mqtt_port', 8883)
         self.emqx_username = config.get('mqtt_username', '')
@@ -30,7 +29,7 @@ class MqttSubscriber:
         self.mqtt_publisher = mqtt_publisher
         self.config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'config.json')
         self.config = config
-
+        self.log_config = config.get('log_config', 'log')
         self.mqtt_client = mqtt_client.Client(client_id=self.client_id, protocol=mqtt_client.MQTTv311)
         self.mqtt_client.username_pw_set(self.emqx_username, self.emqx_password)
         self.configure_tls(config.get('ca_cert_path', 'emqxsl-ca.crt'))
@@ -117,12 +116,19 @@ class MqttSubscriber:
 
     def create_marker(self, data: Dict[str, Any]):
         try:
+            marker_id = data.get('marker_id')
+            # Check if a marker with the same ID already exists
+            if any(position.get('marker_id') == marker_id for position in self.mask_positions):
+                warning_msg = f"Marker with marker_id {marker_id} already exists."
+                logging.warning(warning_msg)
+                self.mqtt_publisher.publish_log(warning_msg)
+                return  # Exit the function if the marker already exists
+    
             # Append the new marker data to the in-memory list
             self.mask_positions.append(data)
             self.save_mask_positions()
             logging.info(f"Created marker position: {data}")
-            self.publish_log("create complete")
-            self.notify_marker_update()
+            self.mqtt_publisher.publish_log("create complete")
         except Exception as e:
             logging.error(f"Error creating marker position: {e}")
 
@@ -137,12 +143,11 @@ class MqttSubscriber:
             if not updated:
                 warning_msg = f"No marker found with marker_id {data.get('marker_id')}"
                 logging.warning(warning_msg)
-                self.publish_log(warning_msg)
+                self.mqtt_publisher.publish_log(warning_msg)
                 return
             self.save_mask_positions()
             logging.info(f"Updated marker position: {data}")
-            self.publish_log("update complete")
-            self.notify_marker_update()
+            self.mqtt_publisher.publish_log("update complete")
         except Exception as e:
             logging.error(f"Error updating marker position: {e}")
 
@@ -158,7 +163,7 @@ class MqttSubscriber:
             if len(new_positions) == len(self.mask_positions):
                 warning_msg = f"No marker found with marker_id {marker_id}"
                 logging.warning(warning_msg)
-                self.publish_log(warning_msg)
+                self.mqtt_publisher.publish_log(warning_msg)
                 return
             self.mask_positions = new_positions
             self.save_mask_positions()
@@ -180,8 +185,7 @@ class MqttSubscriber:
             except Exception as e:
                 logging.error(f"Error updating rule.json when deleting marker {marker_id}: {e}")
 
-            self.publish_log("delete complete")
-            self.notify_marker_update()
+            self.mqtt_publisher.publish_log("delete complete")
         except Exception as e:
             logging.error(f"Error deleting marker position: {e}")
 
@@ -198,7 +202,7 @@ class MqttSubscriber:
                 json.dump(self.config, f, indent=4)
             
             logging.info(f"Created edge device: {data}")
-            self.publish_log("edge create complete")
+            self.mqtt_publisher.publish_log("edge create complete")
 
         except Exception as e:
             logging.error(f"Error creating edge device: {e}")
@@ -221,7 +225,7 @@ class MqttSubscriber:
                 json.dump(self.config, f, indent=4)
             
             logging.info(f"Updated edge device: {data}")
-            self.publish_log("edge update complete")
+            self.mqtt_publisher.publish_log("edge update complete")
         except Exception as e:
             logging.error(f"Error updating edge device: {e}")
 
@@ -237,7 +241,7 @@ class MqttSubscriber:
                 json.dump(self.config, f, indent=4)
             
             logging.info(f"Deleted edge device: {data}")
-            self.publish_log("edge delete complete")
+            self.mqtt_publisher.publish_log("edge delete complete")
         except Exception as e:
             logging.error(f"Error deleting edge device: {e}")
 
@@ -248,12 +252,12 @@ class MqttSubscriber:
                 rule_config = json.load(f)
         except Exception as e:
             logging.error(f"Error loading rule.json: {e}")
-            self.publish_log("Error loading rule configuration.")
+            self.mqtt_publisher.publish_log("Error loading rule configuration.")
             return False
     
         rule = next((r for r in rule_config.get('rules', []) if r.get('id') == rule_id), None)
         if not rule:
-            self.publish_log(f"No rule found with rule_id {rule_id}.")
+            self.mqtt_publisher.publish_log(f"No rule found with rule_id {rule_id}.")
             return False
     
         # Use rule.get("json_params") to access the json_params
@@ -273,7 +277,7 @@ class MqttSubscriber:
     
         for key in provided_params.keys():
             if key not in allowed_params:
-                self.publish_log(f"Invalid json parameter '{key}' for rule_id {rule_id}. Allowed keys: {list(allowed_params.keys())}")
+                self.mqtt_publisher.publish_log(f"Invalid json parameter '{key}' for rule_id {rule_id}. Allowed keys: {list(allowed_params.keys())}")
                 return False
     
         return True
@@ -281,11 +285,11 @@ class MqttSubscriber:
     def validate_create_payload(self, data: dict) -> bool:
         """Validates the payload for creating a rule applied."""
         if 'marker_id' not in data or 'rule_id' not in data or 'applied_id' not in data:
-            self.publish_log("Payload missing required fields 'marker_id', 'rule_id', and/or 'applied_id' for create_rule_applied.")
+            self.mqtt_publisher.publish_log("Payload missing required fields 'marker_id', 'rule_id', and/or 'applied_id' for create_rule_applied.")
             return False
 
         if 'json_params' in data and not isinstance(data['json_params'], dict):
-            self.publish_log("Field 'json_params' must be a JSON object for create_rule_applied.")
+            self.mqtt_publisher.publish_log("Field 'json_params' must be a JSON object for create_rule_applied.")
             return False
 
         rule_id = data.get('rule_id')
@@ -299,23 +303,23 @@ class MqttSubscriber:
                 rule_config = json.load(f)
         except Exception as e:
             logging.error(f"Error loading rule.json: {e}")
-            self.publish_log("Error loading rule configuration.")
+            self.mqtt_publisher.publish_log("Error loading rule configuration.")
             return False
 
         matched_rule = next((r for r in rule_config.get('rules', []) if r.get('id') == rule_id), None)
         if matched_rule and 'rule_applied' in matched_rule:
             if any(entry.get('applied_id') == data.get('applied_id') for entry in matched_rule['rule_applied']):
-                self.publish_log(f"applied_id {data.get('applied_id')} already exists for rule_id {rule_id}")
+                self.mqtt_publisher.publish_log(f"applied_id {data.get('applied_id')} already exists for rule_id {rule_id}")
                 return False
 
         return True
 
     def validate_update_payload(self, data: dict) -> bool:
         if 'marker_id' not in data or 'rule_id' not in data or 'applied_id' not in data:
-            self.publish_log("Payload missing one or more required fields ('marker_id', 'rule_id', 'id') for update_rule_applied.")
+            self.mqtt_publisher.publish_log("Payload missing one or more required fields ('marker_id', 'rule_id', 'id') for update_rule_applied.")
             return False
         if 'json_params' in data and not isinstance(data['json_params'], dict):
-            self.publish_log("Field 'json_params' must be a JSON object for update_rule_applied.")
+            self.mqtt_publisher.publish_log("Field 'json_params' must be a JSON object for update_rule_applied.")
             return False
         rule_id = data.get('rule_id')
         json_params = data.get('json_params', {})
@@ -325,12 +329,12 @@ class MqttSubscriber:
 
     def validate_delete_payload(self, data: dict) -> bool:
         if 'marker_id' not in data or 'rule_id' not in data or 'applied_id' not in data:
-            self.publish_log("Payload missing one or more required fields ('marker_id', 'rule_id', 'id') for delete_rule_applied.")
+            self.mqtt_publisher.publish_log("Payload missing one or more required fields ('marker_id', 'rule_id', 'id') for delete_rule_applied.")
             return False
         return True
 
     def create_rule_applied(self, data: dict):
-        """Handles the creation of a new rule applied to a marker and updates rule.json."""
+        """Handles the creation of a new rule applied to a marker and updates rule.json and marker_positions.json."""
         try:
             if not self.validate_create_payload(data):
                 logging.error("Invalid payload for create_rule_applied.")
@@ -374,6 +378,20 @@ class MqttSubscriber:
             with open(self.rule_config_file, 'w') as f:
                 json.dump(rule_config, f, indent=4)
             logging.info(f"Created applied rule for marker {marker_id} in rule {rule_id}.")
+    
+            # Update marker_positions.json
+            for i, marker in enumerate(self.mask_positions):
+                if marker.get('marker_id') == marker_id:
+                    if 'applied_ids' not in marker:
+                        marker['applied_ids'] = []
+                    if applied_id not in marker['applied_ids']:
+                        marker['applied_ids'].append(applied_id)
+                    self.mask_positions[i] = marker  # Update the marker in the list
+                    break  # Exit loop after finding and updating the marker
+    
+            # Save the updated marker positions
+            self.save_mask_positions()
+    
         except Exception as e:
             logging.error(f"Error applying rule: {e}")
     
@@ -440,7 +458,7 @@ class MqttSubscriber:
                     rule_config = json.load(f)
             except Exception as e:
                 logging.error(f"Error loading rule.json: {e}")
-                self.publish_log("Error loading rule configuration.")
+                self.mqtt_publisher.publish_log("Error loading rule configuration.")
                 return
     
             # Find the matching rule
@@ -457,7 +475,7 @@ class MqttSubscriber:
                 ]
             else:
                 logging.warning(f"No rule_applied found for rule_id {rule_id}")
-                self.publish_log(f"No rule_applied found for rule_id {rule_id}")
+                self.mqtt_publisher.publish_log(f"No rule_applied found for rule_id {rule_id}")
                 return
     
             # Save the updated rule.json
@@ -465,37 +483,12 @@ class MqttSubscriber:
                 with open(self.rule_config_file, 'w') as f:
                     json.dump(rule_config, f, indent=4)
                 logging.info(f"Deleted applied rule {applied_id} from rule {rule_id}")
-                self.publish_log(f"Deleted applied rule {applied_id} from rule {rule_id}")
+                self.mqtt_publisher.publish_log(f"Deleted applied rule {applied_id} from rule {rule_id}")
             except Exception as e:
                 logging.error(f"Error saving rule.json: {e}")
     
         except Exception as e:
             logging.error(f"Error deleting rule: {e}")
-
-    def notify_marker_update(self):
-        logging.debug("notify_marker_update() called. Mask positions: %s", self.mask_positions)
-        if self.zone_tracker:
-            try:
-                logging.debug("Re-loading the full rule configuration from rule.json.")
-                # Reload rule.json in zone tracker so that latest ruleApplied entries are used.
-                if hasattr(self.zone_tracker, "load_rule_config"):
-                    self.zone_tracker.rule_config = self.zone_tracker.load_rule_config()
-                    logging.debug("Zone tracker rule configuration reloaded.")
-                self.zone_tracker.load_zones()
-                self.zone_tracker.load_arrows()
-                logging.info("Zone tracker realtime update triggered successfully.")
-            except Exception as ex:
-                logging.error("Error during zone_tracker update: %s", ex)
-        else:
-            logging.warning("No zone_tracker defined in MqttSubscriber; realtime update may not occur.")
-
-    def publish_log(self, message: str):
-        """Publishes a log message to the 'marker_positions/log' topic."""
-        marker_log_topic = f"{self.config.get('unique_id')}/{self.config.get('log_topic', 'log')}"
-        try:
-            self.mqtt_publisher.publish(marker_log_topic, message)
-        except Exception as e:
-            logging.error(f"Error publishing log message: {e}")
 
     def disconnect(self):
         """Disconnects the MQTT client."""

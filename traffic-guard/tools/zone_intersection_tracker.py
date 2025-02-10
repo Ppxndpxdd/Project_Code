@@ -19,8 +19,9 @@ class ZoneIntersectionTracker:
     def __init__(self, config: Dict[str, Any], show_result: bool = True, extract_image: bool = True):
         """Initializes the ZoneIntersectionTracker with configuration."""
         self.config = config
-        self.detection_topic = config.get('detection_topic', 'detection')
-        self.heartbeat_topic = config.get('heartbeat_topic', 'keep-alive')
+        self.detection_topic = f"{config.get('detection_topic', 'detection')}/{config.get('unique_id', 'default_id')}"
+        self.heartbeat_topic = f"{config.get('heartbeat_topic', 'keep-alive')}/{config.get('unique_id', 'default_id')}"
+        self.log_topic = config.get('log_topic', 'log')
         self.show_result = show_result
         self.extract_image = extract_image
 
@@ -28,11 +29,11 @@ class ZoneIntersectionTracker:
         self.rule_config = self.load_rule_config()
 
         # Get rule-based settings with fallback to original config.
-        self.no_parking_duration = []
+        # In __init__
+        self.no_parking_duration = 0  # default value
         for rule in self.rule_config.get("rules", []):
             if rule.get("name", "").lower() == "no parking":
                 duration = None
-                # Prefer the duration from ruleApplied if available:
                 if rule.get("rule_applied"):
                     try:
                         applied_record = rule["rule_applied"][0]
@@ -40,7 +41,6 @@ class ZoneIntersectionTracker:
                         duration = params.get("duration")
                     except Exception as e:
                         logging.error(f"Error parsing no parking ruleApplied jsonParams: {e}")
-                # Fallback to the root jsonParams from the rule if needed:
                 if duration is None:
                     try:
                         params = json.loads(rule.get("json_params", "{}"))
@@ -48,7 +48,7 @@ class ZoneIntersectionTracker:
                     except Exception as e:
                         logging.error(f"Error parsing no parking jsonParams: {e}")
                 if duration is not None:
-                    self.no_parking_duration = duration
+                    self.no_parking_duration = float(duration)
                 break
         self.wrong_way_config = self.rule_config.get("wrong_way", config.get("wrong_way", {}))
 
@@ -115,7 +115,8 @@ class ZoneIntersectionTracker:
             "edge_device_id": self.edge_device_id,
             "heartbeat_interval": config.get('heartbeat_interval', 60),
             "heartbeat_topic": self.heartbeat_topic,
-            "detection_topic": self.detection_topic
+            "detection_topic": self.detection_topic,
+            "log_topic": self.log_topic
         }
         logging.info(f"ZoneIntersectionTracker initialized with edge_device_id: {self.edge_device_id}")
         self.mqtt_publisher = MqttPublisher({**mqtt_config, **publisher_config})
@@ -238,35 +239,35 @@ class ZoneIntersectionTracker:
         with self.lock:
             try:
                 data = json.loads(msg.payload.decode())
-
+    
                 is_valid, message = self._validate_payload(data)
                 if not is_valid:
                     logging.error(f"Invalid payload received: {message}")
-                    self.mqtt_publisher.send_incident({"error": message})
+                    self.mqtt_publisher.publish_log(json.dumps({"error": message}))
                     return
-
+    
                 # Check for duplicate marker_id
                 if any(entry['marker_id'] == data['marker_id'] for entry in self.mask_positions):
                     error_msg = f"Duplicate marker_id {data['marker_id']} detected. Creation aborted."
                     logging.error(error_msg)
-                    self.mqtt_publisher.send_incident({"error": error_msg})
+                    self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
                     return
-
+    
                 self.mask_positions.append(data)
                 self.save_mask_positions()
                 self.load_zones()
                 self.load_arrows()
                 logging.info(f"Created marker position: {data}")
-                self.mqtt_publisher.send_incident({"message": "create complete", "marker_id": data['marker_id']})
-
+                self.mqtt_publisher.publish_log(json.dumps({"message": "create complete", "marker_id": data['marker_id']}))
+    
             except json.JSONDecodeError:
                 error_msg = "Invalid JSON payload. Marker creation aborted."
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
             except Exception as e:
                 error_msg = f"Error creating marker position: {e}"
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
 
     def _validate_payload(self, data: Dict[str, Any]) -> Tuple[bool, str]:
         """Validates the payload for creating a marker."""
@@ -337,7 +338,7 @@ class ZoneIntersectionTracker:
                 is_valid, message = self._validate_payload_update(data)
                 if not is_valid:
                     logging.error(f"Invalid payload received: {message}")
-                    self.mqtt_publisher.send_incident({"error": message})
+                    self.mqtt_publisher.publish_log(json.dumps({"error": message}))
                     return
 
                 updated = False
@@ -349,21 +350,21 @@ class ZoneIntersectionTracker:
                 if not updated:
                     warning_msg = "No matching marker found to update."
                     logging.warning(warning_msg)
-                    self.mqtt_publisher.send_incident({"warning": warning_msg})
+                    self.mqtt_publisher.publish_log(json.dumps({"warning": warning_msg}))
                     return
                 self.save_mask_positions()
                 self.load_zones()
                 self.load_arrows()
                 logging.info(f"Updated marker position: {data}")
-                self.mqtt_publisher.send_incident({"message": "update complete", "marker_id": data['marker_id']})
+                self.mqtt_publisher.publish_log(json.dumps({"message": "update complete", "marker_id": data['marker_id']}))
             except json.JSONDecodeError:
                 error_msg = "Invalid JSON payload. Marker update aborted."
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
             except Exception as e:
                 error_msg = f"Error updating marker position: {e}"
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
 
     def _validate_payload_update(self, data: Dict[str, Any]) -> Tuple[bool, str]:
         """Validates the payload for updating a marker."""
@@ -420,58 +421,35 @@ class ZoneIntersectionTracker:
         return True, "Payload is valid."
 
     def on_delete_marker(self, client, userdata, msg):
+        """Handles the deletion of a marker from an MQTT message."""
         with self.lock:
-            """Handles the deletion of a marker from an MQTT message."""
             try:
                 data = json.loads(msg.payload.decode())
-                markers_deleted = 0
-
-                if 'marker_id' in data:
-                    marker_id = data['marker_id']
-                    original_count = len(self.mask_positions)
-                    self.mask_positions = [
-                        position for position in self.mask_positions
-                        if position.get('marker_id') != marker_id
-                    ]
-                    markers_deleted = original_count - len(self.mask_positions)
-                    logging.debug(f"Markers deleted with marker_id={marker_id}: {markers_deleted}")
-
-                    # Remove marker entries from tracked_objects
-                    for track_id, obj in self.tracked_objects.items():
-                        original_entries = len(obj['marker_entries'])
-                        obj['marker_entries'] = [
-                            entry for entry in obj['marker_entries']
-                            if entry['marker_id'] != marker_id
-                        ]
-                        if len(obj['marker_entries']) < original_entries:
-                            logging.debug(f"Reset marker entries for object {track_id} due to marker deletion.")
-
+                marker_id = data.get('marker_id')
+    
+                # Find the marker to delete
+                marker_to_delete = next((marker for marker in self.mask_positions if marker.get('marker_id') == marker_id), None)
+    
+                if marker_to_delete:
+                    self.mask_positions.remove(marker_to_delete)
+                    self.save_mask_positions()
+                    self.load_zones()
+                    self.load_arrows()
+                    logging.info(f"Deleted marker position: {data}")
+                    self.mqtt_publisher.publish_log(json.dumps({"message": "delete complete", "marker_id": marker_id}))
                 else:
-                    error_msg = "Delete payload must contain 'marker_id'."
-                    logging.error(error_msg)
-                    self.mqtt_publisher.send_incident({"error": error_msg})
-                    return
-
-                if markers_deleted == 0:
                     warning_msg = "No matching marker found to delete."
                     logging.warning(warning_msg)
-                    self.mqtt_publisher.send_incident({"warning": warning_msg})
-                else:
-                    logging.info(f"Deleted marker position: {data}")
-                    self.mqtt_publisher.send_incident({"message": "delete complete", "marker_id": marker_id})
-
-                self.save_mask_positions()
-                self.load_zones()
-                self.load_arrows()
-
+                    self.mqtt_publisher.publish_log(json.dumps({"warning": warning_msg}))
+    
             except json.JSONDecodeError:
                 error_msg = "Invalid JSON payload. Marker deletion aborted."
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
             except Exception as e:
                 error_msg = f"Error deleting marker position: {e}"
                 logging.error(error_msg)
-                self.mqtt_publisher.send_incident({"error": error_msg})
+                self.mqtt_publisher.publish_log(json.dumps({"error": error_msg}))
 
     def on_create_rule_applied(self, client, userdata, msg):
         with self.lock:
@@ -571,10 +549,32 @@ class ZoneIntersectionTracker:
             color_line = (255, 0, 0)        # Blue color for arrows
             thickness = 2
 
+            # Retrieve rule info for this arrow from rule_config
+            rule_info = None
+            for rule in self.rule_config.get('rules', []):
+                applied_list = rule.get("rule_applied", [])
+                # Check if any applied rule relates to the current marker_id
+                matching = [applied for applied in applied_list if applied.get("marker_id") == marker_id]
+                if matching:
+                    # Create a list of dictionaries with the rule name and applied id
+                    if rule_info is None:
+                        rule_info = []
+                    for applied in matching:
+                        rule_info.append({"applied_id": applied.get("applied_id"), "name": rule.get("name")})
+
             if polygon_points.shape[0] >= 3:
                 cv2.polylines(frame, [polygon_points.astype(np.int32)], isClosed=True, color=color_polygon, thickness=thickness)
+                # Handle rule_info display if available
+                if rule_info:
+                    # If rule_info is a list, join all rule names
+                    if isinstance(rule_info, list):
+                        text = f"ID: {marker_id} " + ", ".join([info.get("name", "N/A") for info in rule_info if info.get("applied_id")])
+                    else:
+                        text = f"ID: {marker_id} " + rule_info.get("name", "N/A")
+                else:
+                    text = f"Arrow Zone {marker_id}"
                 centroid = np.mean(polygon_points, axis=0).astype(int)
-                cv2.putText(frame, f"Arrow Zone {marker_id}", tuple(centroid), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_polygon, thickness)
+                cv2.putText(frame, text, tuple(centroid), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_polygon, thickness)
             else:
                 logging.warning(f"Arrow Zone {marker_id} has insufficient points to draw.")
 
@@ -587,31 +587,35 @@ class ZoneIntersectionTracker:
             else:
                 logging.warning(f"Movement {marker_id} has insufficient points to draw.")
 
-    def _get_object_event(self, track_id: int) -> str:
-        """Returns the most recent relevant event for an object based on detection_log."""
+    def _get_object_event(self, track_id: int) -> List[str]:
+        """
+        Returns a list of unique events for an object based on detection_log.
+        It first checks if the tracked object has a severe event (no_entry, no_parking, wrong_way)
+        and then collects all associated events from the detection_log.
+        """
+        events = []
         obj = self.tracked_objects.get(track_id)
         if not obj:
-            return 'unknown'
+            return ["unknown"]
 
-        # Check if a severe event is already assigned
-        if obj.get('current_event') in ['no_entry', 'no_parking', 'wrong_way']:
-            return obj['current_event']
+        # Include the currently assigned severe event if present.
+        current_event = obj.get('current_event') if isinstance(obj, dict) else getattr(obj, 'current_event', None)
+        if current_event in ['no_entry', 'no_parking', 'wrong_way']:
+            events.append(current_event)
 
-        # Iterate through detection_log in reverse to find the latest events for the track_id
-        for entry in reversed(self.detection_log):
-            if entry.object_id == track_id:
-                if entry.event in ['no_entry', 'no_parking', 'wrong_way']:
-                    obj['current_event'] = entry.event
-                    return entry.event
+        # Collect unique events from detection_log for this object.
+        for entry in self.detection_log:
+            # Retrieve object_id from entry either by dict.get or attribute.
+            if isinstance(entry, dict):
+                object_id = entry.get("object_id", None)
+                ev = entry.get("event", "unknown")
+            else:
+                object_id = getattr(entry, "object_id", None)
+                ev = getattr(entry, "event", "unknown")
+            if object_id == track_id and ev not in events:
+                events.append(ev)
 
-        # If no severe event found, look for the latest 'enter' or 'exit' event
-        for entry in reversed(self.detection_log):
-            if entry.object_id == track_id:
-                if entry.event in ['enter', 'exit']:
-                    obj['current_event'] = entry.event
-                    return entry.event
-
-        return 'unknown'
+        return events if events else None
 
     def xyxy_to_xywh(self, x1, y1, x2, y2, iw, ih):
         x_temp = ((x1 + x2) / 2)/iw
@@ -619,117 +623,6 @@ class ZoneIntersectionTracker:
         w_temp = (abs(x1 - x2))/iw
         h_temp = (abs(y1 - y2))/ih
         return [float(x_temp), float(y_temp), float(w_temp), float(h_temp)]
-
-    def get_frame_from_timestamp(self, video_path: str, timestamp: float) -> np.ndarray:
-        """
-        Retrieves a frame from the video at a specific timestamp.
-        """
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            logging.error(f"Could not open video source '{video_path}'.")
-            return None
-
-        # Convert timestamp to milliseconds
-        timestamp_ms = timestamp * 1000
-        cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_ms)
-
-        ret, frame = cap.read()
-        if not ret:
-            logging.warning(f"Could not retrieve frame at timestamp {timestamp} from '{video_path}'.")
-            cap.release()
-            return None
-
-        cap.release()
-        return frame
-
-    def crop_object_from_frame(self, frame: np.ndarray, bbox: Tuple[float, float, float, float]) -> np.ndarray:
-        """
-        Crops the object from the frame using the bounding box coordinates.
-        """
-        try:
-            x_center_norm, y_center_norm, width_norm, height_norm = bbox
-            frame_height, frame_width = frame.shape[:2]
-
-            # Scale normalized coordinates back to pixel values
-            x_center = x_center_norm * frame_width
-            y_center = y_center_norm * frame_height
-            width = width_norm * frame_width
-            height = height_norm * frame_height
-
-            # Calculate top-left and bottom-right corners of the bounding box
-            x1 = int(x_center - width / 2)
-            y1 = int(y_center - height / 2)
-            x2 = int(x_center + width / 2)
-            y2 = int(y_center + height / 2)
-
-            # Ensure coordinates are within frame boundaries
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(frame_width - 1, x2)
-            y2 = min(frame_height - 1, y2)
-
-            # Crop the object from the frame
-            cropped_object = frame[y1:y2, x1:x2]
-            return cropped_object
-        except Exception as e:
-            logging.error(f"Error cropping object from frame: {e}")
-            return None
-        
-    def save_cropped_image(self, cropped_object: np.ndarray, output_path: str) -> None:
-        """
-        Saves the cropped image to the specified output path.
-        """
-        try:
-            if cropped_object is not None:
-                cv2.imwrite(output_path, cropped_object)
-                logging.info(f"Cropped image saved to {output_path}")
-            else:
-                logging.warning("No cropped object to save.")
-        except Exception as e:
-            logging.error(f"Error saving cropped image: {e}")
-
-    def process_detection_entry(self, detection_entry: DetectionEntry, video_path: str, output_dir: str) -> None:
-        """
-        Retrieves the frame, crops the object, adds event name, and saves the cropped image.
-        """
-        if not self.extract_image:
-            return # Skip image extraction if disabled
-        
-        try:
-            # Use last_seen for timestamp to extract image
-            timestamp = detection_entry.last_seen
-            # Retrieve frame from video
-            frame = self.get_frame_from_timestamp(video_path, timestamp)
-            if frame is None:
-                logging.warning(f"Could not retrieve frame for object {detection_entry.object_id} at timestamp {timestamp}")
-                return
-
-            # Crop object from frame
-            cropped_object = self.crop_object_from_frame(frame, detection_entry.bbox)
-            if cropped_object is None:
-                logging.warning(f"Could not crop object {detection_entry.object_id} from frame.")
-                return
-
-            # Add object_id and event name to the top-right corner of the cropped image
-            event_name = detection_entry.event
-            object_id = detection_entry.object_id
-            text = f"ID: {object_id} | Event: {event_name}"
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.7
-            font_color = (0, 255, 0)  # Green color
-            thickness = 2
-            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-            text_x = cropped_object.shape[1] - text_size[0] - 10
-            text_y = 20  # Position from the top
-            cv2.putText(cropped_object, text, (text_x, text_y), font, font_scale, font_color, thickness)
-
-            # Save cropped image
-            output_filename = f"object_{object_id}_marker_{detection_entry.marker_id}_{event_name}.jpg"
-            output_path = os.path.join(output_dir, output_filename)
-            self.save_cropped_image(cropped_object, output_path)
-
-        except Exception as e:
-            logging.error(f"Error processing detection entry: {e}")
 
     def track_intersections(self, video_path: str, frame_to_edit: int):
 
@@ -804,17 +697,16 @@ class ZoneIntersectionTracker:
                 else:
                     continue
 
-                for i, (bbox_xyxy, conf, class_id, track_id) in enumerate(
+                for i, (bbox, conf, class_id, track_id) in enumerate(
                         zip(boxes.xyxy, boxes.conf.cpu().numpy(), boxes.cls.cpu().numpy(), track_ids)):
                     if int(class_id) not in self.vehicle_class_ids:
                         continue
 
-                    bbox_xyxy_np = bbox_xyxy.cpu().numpy()
+                    bbox_np = bbox.cpu().numpy()
                     track_id = int(track_id)
 
                     # Convert xyxy to xywh immediately
-                    bbox_xywh = self.xyxy_to_xywh(float(bbox_xyxy_np[0]), float(bbox_xyxy_np[1]), float(bbox_xyxy_np[2]), float(bbox_xyxy_np[3]), frame_width, frame_height)
-                    bbox_xywh_np = np.array(bbox_xywh) # Convert bbox_xywh to numpy array
+                    bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]), frame_width, frame_height)
 
                     max_iou = 0
                     intersecting_marker_id = None
@@ -826,7 +718,7 @@ class ZoneIntersectionTracker:
                         }
 
                     for marker_id, polygon in self.zones.items():
-                        intersects, iou = self.intersects(bbox_xyxy_np, polygon)
+                        intersects, iou = self.intersects(bbox_np, polygon)
 
                         if iou > max_iou:
                             max_iou = iou
@@ -856,7 +748,6 @@ class ZoneIntersectionTracker:
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
                             # self.mqtt_publisher.send_incident(detection_entry)
-                            self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                         elif not intersects and marker_entry_exists:
                             for entry in self.tracked_objects[track_id]['marker_entries']:
@@ -876,13 +767,12 @@ class ZoneIntersectionTracker:
                                     self.detection_log.append(detection_entry)
                                     self.save_detection_log()
                                     # self.mqtt_publisher.send_incident(detection_entry)
-                                    self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                     # Handle movement markers
                     for marker_id, arrow_data in self.arrows.items():
                         polygon_points = arrow_data['polygon_points']
                         line_points = arrow_data['line_points']
-                        intersects_movement, iou_movement = self.intersects(bbox_xyxy_np, polygon_points)
+                        intersects_movement, iou_movement = self.intersects(bbox_np, polygon_points)
                         if iou_movement > max_iou:
                             max_iou = iou_movement
                             intersecting_marker_id = marker_id if intersects_movement else None
@@ -913,13 +803,12 @@ class ZoneIntersectionTracker:
                             self.detection_log.append(detection_entry)
                             self.save_detection_log()
                             # self.mqtt_publisher.send_incident(detection_entry)
-                            self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                         elif intersects_movement:
                             for entry in self.tracked_objects[track_id]['marker_entries']:
                                 if entry['marker_id'] == marker_id and entry['last_seen'] is None:
-                                    x_center = (bbox_xyxy_np[0] + bbox_xyxy_np[2]) / 2
-                                    y_center = (bbox_xyxy_np[1] + bbox_xyxy_np[3]) / 2
+                                    x_center = (bbox_np[0] + bbox_np[2]) / 2
+                                    y_center = (bbox_np[1] + bbox_np[3]) / 2
                                     entry['trajectory'].append((x_center, y_center))
                                     if len(entry['trajectory']) > 10:
                                         entry['trajectory'] = entry['trajectory'][-10:]
@@ -942,19 +831,18 @@ class ZoneIntersectionTracker:
                                     self.detection_log.append(detection_entry)
                                     self.save_detection_log()
                                     # self.mqtt_publisher.send_incident(detection_entry)
-                                    self.process_detection_entry(detection_entry, video_path, self.output_dir)
 
                     # Check for no_parking and no_entry events
-                    self._check_no_parking(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
-                    self._check_no_entry(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
-                    self._check_wrong_way(track_id, class_id, conf, bbox_xywh_np, timestamp, frame_width, frame_height)
+                    self._check_no_parking(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
+                    self._check_no_entry(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
+                    self._check_wrong_way(track_id, class_id, conf, bbox_np, timestamp, frame_width, frame_height)
 
                     # Determine color based on time in zone
                     time_in_zone = self._get_time_in_zone(track_id, timestamp)
                     bbox_color = self._get_bbox_color(time_in_zone)
-
+                    text_color = (0, 0, 255)
                     # Draw bounding box
-                    x1, y1, x2, y2 = bbox_xyxy_np.astype(int)
+                    x1, y1, x2, y2 = bbox_np.astype(int)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), bbox_color, 2)
 
                     # Draw object ID, IoU, time in zone, and marker info
@@ -964,11 +852,11 @@ class ZoneIntersectionTracker:
                     if isinstance(intersecting_marker_id, list):
                         marker_info = ', '.join(map(str, intersecting_marker_id))
                     label2 = f"Time: {time_in_zone:.1f}s Marker: {marker_info}"
-                    cv2.putText(frame, label1, (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
-                    cv2.putText(frame, label2, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, bbox_color, 2)
+                    cv2.putText(frame, label1, (x1, y1 - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
+                    cv2.putText(frame, label2, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
 
                     logging.debug(
-                        f"Object {track_id}: bbox={bbox_xyxy_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, marker={intersecting_marker_id}")
+                        f"Object {track_id}: bbox={bbox_np}, IoU={max_iou:.2f}, time_in_zone={time_in_zone:.1f}, marker={intersecting_marker_id}")
 
             if self.show_result:
                 cv2.imshow('Detection', frame)
@@ -982,103 +870,117 @@ class ZoneIntersectionTracker:
             cv2.destroyAllWindows()
 
         self.mqtt_publisher.mqtt_handler.disconnect()
-        self.process_detection_entry(detection_entry, video_path, self.output_dir)
         logging.info("Disconnected from EMQX.")
         
     def _check_no_parking(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray, timestamp: float, frame_width, frame_height):
-        """Checks if an object has exceeded the no_parking duration in a zone."""
         for marker_entry in self.tracked_objects[track_id]['marker_entries']:
             marker_id = marker_entry.get('marker_id')
             if marker_id is None:
                 continue
-
+    
             # Retrieve rule info for "no parking" based on marker_id
-            rule_info = self.get_rules_for_marker(marker_id, 'no parking')
-            if not rule_info:
-                continue  # Skip if no rule applies to this marker_id
-
-            # Parse duration threshold from rule's jsonParams
-            parking_duration_threshold = self.no_parking_duration
-            for rule in rule_info:
-                try:
-                    params = rule.get("jsonParams", {})
-                    parking_duration_threshold = float(params.get("duration", self.no_parking_duration))
-                except (ValueError, TypeError):
-                    continue
-
-            if marker_entry['last_seen'] is None:
-                time_in_zone = self._get_time_in_zone(track_id, timestamp)
-                if time_in_zone > parking_duration_threshold and 'threshold_logged' not in marker_entry:
-                    logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_id}")
-                    bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]), float(bbox_np[3]),frame_width, frame_height)
-                    detection_entry = DetectionEntry(
-                        object_id=track_id,
-                        class_id=int(class_id),
-                        confidence=float(conf),
-                        marker_id=int(marker_id),
-                        id_rule_applied=rule_info[0].get("applied", {}).get("applied_id") if rule_info else None,
-                        first_seen=float(marker_entry['first_seen']),
-                        last_seen=float(timestamp),
-                        duration=float(time_in_zone),
-                        event='no_parking',
-                        bbox=bbox_xywh
-                    )
-                    self.detection_log.append(detection_entry)
-                    self.save_detection_log()
-                    self.mqtt_publisher.send_incident(detection_entry)
-                    marker_entry['threshold_logged'] = True
-                    self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
+            rules = self.get_rules_for_marker(marker_id, 'no parking')
+            if not rules:
+                logging.debug(f"No parking rules found for marker {marker_id}.")
+                continue
+        
+            for rule in rules:
+                # Check if an applied rule is present and use its json_params; otherwise, use rule-level params.
+                applied = rule.get("applied_id")
+                if applied and applied.get("json_params"):
+                    try:
+                        params = json.loads(applied.get("json_params"))
+                        parking_duration_threshold = float(params.get("duration", self.no_parking_duration))
+                    except Exception as e:
+                        logging.error(f"Error parsing applied json_params: {e}")
+                        parking_duration_threshold = self.no_parking_duration
+                else:
+                    try:
+                        params = json.loads(rule.get("json_params", "{}"))
+                        parking_duration_threshold = float(params.get("duration", self.no_parking_duration))
+                    except Exception as e:
+                        logging.error(f"Error parsing rule json_params: {e}")
+                        continue
+    
+                # Optionally remove the last_seen check if you want to trigger the event after exit as well
+                if marker_entry['last_seen'] is None:
+                    time_in_zone = self._get_time_in_zone(track_id, timestamp)
+                    logging.debug(f"Track {track_id} in marker {marker_id}: time_in_zone={time_in_zone}, threshold={parking_duration_threshold}")
+                    if time_in_zone > parking_duration_threshold and 'threshold_logged' not in marker_entry:
+                        logging.info(f"Object {track_id} exceeded no_parking duration in marker {marker_id}")
+                        bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]),
+                                                       float(bbox_np[1]),
+                                                       float(bbox_np[2]),
+                                                       float(bbox_np[3]),
+                                                       frame_width,
+                                                       frame_height)
+                        detection_entry = DetectionEntry(
+                            object_id=track_id,
+                            class_id=int(class_id),
+                            confidence=float(conf),
+                            marker_id=int(marker_id),
+                            id_rule_applied=applied["applied_id"] if applied else None,
+                            first_seen=float(marker_entry['first_seen']),
+                            last_seen=float(timestamp),
+                            duration=float(time_in_zone),
+                            event='no_parking',
+                            bbox=bbox_xywh
+                        )
+                        self.detection_log.append(detection_entry)
+                        self.save_detection_log()
+                        self.mqtt_publisher.send_incident(detection_entry)
+                        marker_entry['threshold_logged'] = True
                     
     def _check_no_entry(self, track_id: int, class_id: int, conf: float, bbox_np: np.ndarray,
-                        timestamp: float, frame_width, frame_height):
-        """Checks if an object is in a no_entry zone using marker IDs from rule.json and prevents duplicate MQTT messages.
-        This updated version supports multiple applied rules per marker.
-        """
-        # Build set of marker IDs registered as no_entry zones from rule.json
-        no_entry_zone_ids = set()
-        for rule in self.rule_config.get('rules', []):
-            if rule.get("name", "").lower() == "no entry":
-                for applied in rule.get("rule_applied", []):
-                    marker_id = applied.get("marker_id")
-                    if marker_id is not None:
-                        no_entry_zone_ids.add(marker_id)
-
-        # Iterate over tracked marker entries for the object
-        for marker_entry in self.tracked_objects[track_id].get('marker_entries', []):
-            marker_id = marker_entry.get('marker_id')
-            if marker_id is None:
-                continue
-            # Process only if marker_id is in no_entry zones,
-            # event hasn't been logged yet and no MQTT message has been sent.
-            if marker_id in no_entry_zone_ids and marker_entry.get('last_seen') is None \
-            and not marker_entry.get('mqtt_sent', False):
-                logging.info(f"Object {track_id} is in a no_entry zone: {marker_id}")
-                bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]),
-                                            float(bbox_np[3]), frame_width, frame_height)
-                # Get all matching no entry rules for the marker
-                rules = self.get_rules_for_marker(marker_id, 'no entry')
-                if not rules:
+                            timestamp: float, frame_width, frame_height):
+            """Checks if an object is in a no_entry zone using marker IDs from rule.json and prevents duplicate MQTT messages.
+            This updated version supports multiple applied rules per marker.
+            """
+            # Build set of marker IDs registered as no_entry zones from rule.json
+            no_entry_zone_ids = set()
+            for rule in self.rule_config.get('rules', []):
+                if rule.get("name", "").lower() == "no entry":
+                    for applied in rule.get("rule_applied", []):
+                        marker_id = applied.get("marker_id")
+                        if marker_id is not None:
+                            no_entry_zone_ids.add(marker_id)
+    
+            # Iterate over tracked marker entries for the object
+            for marker_entry in self.tracked_objects[track_id].get('marker_entries', []):
+                marker_id = marker_entry.get('marker_id')
+                if marker_id is None:
                     continue
-                for rule in rules:
-                    applied_rule = rule.get("applied", {})
-                    detection_entry = DetectionEntry(
-                        object_id=track_id,
-                        class_id=int(class_id),
-                        confidence=float(conf),
-                        marker_id=int(marker_id),
-                        id_rule_applied=applied_rule.get("applied_id"),
-                        first_seen=float(marker_entry['first_seen']),  # Use the initial entry time
-                        last_seen=float(timestamp),
-                        duration=None,
-                        event='no_entry',
-                        bbox=bbox_xywh
-                    )
-                    self.detection_log.append(detection_entry)
-                    self.save_detection_log()
-                    self.mqtt_publisher.send_incident(detection_entry)
-                    self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
-                # Mark this entry to prevent duplicate MQTT messages for this marker entry
-                marker_entry['mqtt_sent'] = True
+                # Process only if marker_id is in no_entry zones,
+                # event hasn't been logged yet and no MQTT message has been sent.
+                if marker_id in no_entry_zone_ids and marker_entry.get('last_seen') is None \
+                and not marker_entry.get('mqtt_sent', False):
+                    logging.info(f"Object {track_id} is in a no_entry zone: {marker_id}")
+                    bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]), float(bbox_np[2]),
+                                                float(bbox_np[3]), frame_width, frame_height)
+                    # Get all matching no entry rules for the marker
+                    rules = self.get_rules_for_marker(marker_id, 'no entry')
+                    if not rules:
+                        continue
+                    for rule in rules:
+                        for applied in rule.get("rule_applied", []):
+                            if applied.get("marker_id") == marker_id:
+                                detection_entry = DetectionEntry(
+                                    object_id=track_id,
+                                    class_id=int(class_id),
+                                    confidence=float(conf),
+                                    marker_id=int(marker_id),
+                                    id_rule_applied=applied.get("applied_id"),
+                                    first_seen=float(marker_entry['first_seen']),  # Use the initial entry time
+                                    last_seen=float(timestamp),
+                                    duration=None,
+                                    event='no_entry',
+                                    bbox=bbox_xywh
+                                )
+                                self.detection_log.append(detection_entry)
+                                self.save_detection_log()
+                                self.mqtt_publisher.send_incident(detection_entry)
+                                # Mark this entry to prevent duplicate MQTT messages for this marker entry
+                                marker_entry['mqtt_sent'] = True
                 
     def calculate_direction(self, start_point, end_point):
         """Calculate the direction vector from start to end point."""
@@ -1161,16 +1063,15 @@ class ZoneIntersectionTracker:
                     event_type = 'wrong_way'
                     logging.info(f"Vehicle {track_id} violated wrong way rule in marker {marker_id}: {violation}")
                     bbox_xywh = self.xyxy_to_xywh(float(bbox_np[0]), float(bbox_np[1]),
-                                                   float(bbox_np[2]), float(bbox_np[3]),
-                                                   frame_width, frame_height)
+                                                float(bbox_np[2]), float(bbox_np[3]),
+                                                frame_width, frame_height)
                     for rule in rules:
-                        applied_rule = rule.get("applied", {})
                         detection_entry = DetectionEntry(
                             object_id=track_id,
                             class_id=int(class_id),
                             confidence=float(conf),
                             marker_id=int(marker_id),
-                            id_rule_applied=applied_rule.get("applied_id"),
+                            id_rule_applied = rule.get("applied_id")["applied_id"] if isinstance(rule.get("applied_id"), dict) else rule.get("applied_id"),
                             first_seen=float(marker_entry['first_seen']),
                             last_seen=float(timestamp),
                             duration=None,
@@ -1180,7 +1081,6 @@ class ZoneIntersectionTracker:
                         self.detection_log.append(detection_entry)
                         self.save_detection_log()
                         self.mqtt_publisher.send_incident(detection_entry)
-                        self.process_detection_entry(detection_entry, self.config['video_source'], self.output_dir)
                     # Mark the track_id so we don't log wrong_way repeatedly
                     self.tracked_objects[track_id]['wrong_way_logged'] = True
 
