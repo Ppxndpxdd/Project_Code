@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
         process_detection_log(
             detection_log_path=config['detection_log'],
-            video_path=config['video_source'],
+            video_path=config['rtsp_url'],
             output_dir=config['output_dir'],
             get_frame_from_timestamp_func=get_frame_from_timestamp,
             crop_object_from_frame_func=crop_object_from_frame,

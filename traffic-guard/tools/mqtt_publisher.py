@@ -36,12 +36,14 @@ class MqttPublisher:
                 payload = asdict(detection_entry)
             except Exception as e:
                 logging.error(f"Failed to convert detection_entry to dict: {e}")
+                self.publish_log(f"Failed to convert detection_entry to dict: {e}")
                 payload = {}
         else:
             payload = detection_entry
 
         if not payload:
             logging.error("Payload is empty. Incident not sent.")
+            self.publish_log("Payload is empty. Incident not sent.")
             return
 
         # Ensure id_rule_applied gets added if ruleApplied exists and is a non-empty list
@@ -50,13 +52,16 @@ class MqttPublisher:
             payload["id_rule_applied"] = rule_applied[0].get("id")
         else:
             logging.debug("No valid ruleApplied found; id_rule_applied not added.")
+            self.publish_log("No valid ruleApplied found; id_rule_applied not added.")
 
         topic = self.get_incident_topic()
         logging.debug(f"Sending incident payload: {payload} to topic: {topic}")
+        self.publish_log(f"Sending incident payload: {payload} to topic: {topic}")
         try:
             self.mqtt_handler.publish(topic, json.dumps(payload))
         except Exception as e:
             logging.error(f"Failed to send incident: {e}")
+            self.publish_log(f"Failed to send incident: {e}")
 
     def send_heartbeat(self):
         """Sends a heartbeat message to the MQTT broker at regular intervals."""
@@ -69,8 +74,10 @@ class MqttPublisher:
                 logging.info(f"Sending heartbeat to topic: {topic}")
                 self.mqtt_handler.publish(topic, json.dumps(heartbeat_message))
                 logging.info("Heartbeat sent successfully.")
+                # self.publish_log("Heartbeat sent successfully.")
             except Exception as e:
                 logging.error(f"Failed to send heartbeat: {e}")
+                self.publish_log(f"Failed to send heartbeat: {e}")
             # use the configured heartbeat_interval instead of hard-coded 30 sec
             time.sleep(self.heartbeat_interval)
             
