@@ -1,8 +1,8 @@
 {
-    "uniqueId": "eTdm",
-    "edgeDeviceId": 3,
-    "video_source": "traffic-guard/src/output.ts",
-    "rtspUrl": "",
+    "unique_id": "eTdm",
+    "edge_device_id": 8,
+    "video_source": "traffic-guard/src/output.mp4",
+    "rtsp_url": "rtsp2-link.com",
     "model_path": "traffic-guard/model/yolo11m.pt",
     "frame_to_edit": 1,
     "mask_json_path": "traffic-guard/config/marker_positions.json",
@@ -20,7 +20,8 @@
     "mqtt_password": "pppppppp",
     "ca_cert_path": "traffic-guard/cert/emqxsl-ca.crt",
     "detection_topic": "detection",
-    "heartbeat_topic": "heartbeat",
+    "heartbeat_topic": "keep_alive",
+    "log_topic": "log",
     "subscribe_topics": [
         "create",
         "update",

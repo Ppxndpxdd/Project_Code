@@ -149,21 +149,35 @@ class MarkerZone:
         logging.info("No marker selected.")
 
     def draw_selected_marker_info(self, img: np.ndarray):
-        """Draws the selected marker's information on the top right of the screen."""
+        """Draws the selected marker's information on the top right of the screen by reading rule info from rule.json."""
         if self.selected_marker_id is not None and self.selected_marker_id in self.markers:
             marker_data = self.markers[self.selected_marker_id]
             info_lines = [
                 f"Selected Marker: {self.selected_marker_id}",
                 f"Type: {marker_data.get('type', 'N/A')}"
             ]
-            if 'rule' in marker_data:
-                info_lines.append(f"Rule: {marker_data['rule']}")
-            else:
-                info_lines.append("Rule: None")
+            applied_ids = marker_data.get("applied_ids", [])
+            rule_names = []
+            if applied_ids:
+                rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
+                try:
+                    with open(rule_config_path, 'r') as f:
+                        rule_config = json.load(f)
+                    for rule in rule_config.get("rules", []):
+                        for applied in rule.get("rule_applied", []):
+                            if applied.get("id") in applied_ids:
+                                rule_names.append(rule.get("name"))
+                except Exception as e:
+                    logging.error(f"Error loading rule.json: {e}")
+                    rule_names.append("Error loading rule")
+            rule_info_line = "Rules: " + (", ".join(rule_names) if rule_names else "None")
+            info_lines.append(rule_info_line)
+
+            # Render the info overlay
             x = img.shape[1] - 250
             y = 20
             overlay = img.copy()
-            cv2.rectangle(overlay, (x-10, y-15), (img.shape[1]-10, y + 15 * len(info_lines)), (0, 0, 0), -1)
+            cv2.rectangle(overlay, (x - 10, y - 15), (img.shape[1] - 10, y + 15 * len(info_lines)), (0, 0, 0), -1)
             alpha = 0.5
             img[:] = cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0)
             for line in info_lines:
@@ -194,8 +208,8 @@ class MarkerZone:
             with open(rule_config_path, 'r') as f:
                 rule_config = json.load(f)
             for rule in rule_config.get('rules', []):
-                if 'ruleApplied' in rule:
-                    rule['ruleApplied'] = [applied for applied in rule['ruleApplied'] 
+                if 'rule_applied' in rule:
+                    rule['rule_applied'] = [applied for applied in rule['rule_applied'] 
                                         if applied.get('markerId') != marker_id]
             with open(rule_config_path, 'w') as f:
                 json.dump(rule_config, f, indent=4)
@@ -282,8 +296,12 @@ class MarkerZone:
                 if self.selected_marker_id is not None:
                     import os, json
                     rule_config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'rule.json')
-                    with open(rule_config_path, 'r') as f:
-                        rule_config = json.load(f)
+                    try:
+                        with open(rule_config_path, 'r') as f:
+                            rule_config = json.load(f)
+                    except Exception as e:
+                        logging.error(f"Error loading rule.json: {e}")
+                        return
 
                     print("Available Rules:")
                     for rule in rule_config.get("rules", []):
@@ -300,81 +318,83 @@ class MarkerZone:
                         if rule.get("id") == rule_id:
                             matched_rule = rule
                             break
+                    if not matched_rule:
+                        logging.error(f"No matching rule found with id {rule_id}.")
+                        return
 
-                    if matched_rule:
-                        # If user picked the 'Wrong Way' rule, only allow certain choices
-                        if matched_rule.get("name") == "Wrong Way":
-                            direction_choice = input("Select direction from [opposite, left, right]: ")
-                            while direction_choice not in ["opposite", "left", "right"]:
-                                direction_choice = input("Invalid choice. Must be one of [opposite, left, right]: ")
-                            updated_params = {"sub_rules": direction_choice}
+                    # Ask for an applied rule id from the user
+                    applied_id_input = input("Enter applied rule id: ")
+                    try:
+                        applied_id = int(applied_id_input)
+                    except ValueError:
+                        logging.error("Invalid applied rule id. Must be an integer.")
+                        return
+
+                    # Prompt for json_params based on rule name
+                    rule_name = matched_rule.get("name", "").lower()
+                    new_json_params = "{}"
+                    if rule_name == "no entry":
+                        user_value = input("Enter confidence value for No Entry rule (e.g., 0.2): ")
+                        try:
+                            confidence = float(user_value)
+                            new_json_params = json.dumps({"confidence": confidence})
+                        except ValueError:
+                            logging.error("Invalid confidence value. Must be a number.")
+                            return
+                    elif rule_name == "no parking":
+                        user_value = input("Enter duration value for No Parking rule (e.g., 5.0): ")
+                        try:
+                            duration = float(user_value)
+                            new_json_params = json.dumps({"duration": duration})
+                        except ValueError:
+                            logging.error("Invalid duration value. Must be a number.")
+                            return
+                    elif rule_name == "wrong way":
+                        new_json_params = "{}"
+                    else:
+                        user_input = input("Enter JSON parameters for the rule (e.g., {\"key\": \"value\"}) or leave empty for {}: ")
+                        if not user_input.strip():
+                            new_json_params = "{}"
                         else:
-                            # Otherwise, proceed with default or user-provided JSON param updates
                             try:
-                                default_params = json.loads(matched_rule.get("jsonParams", "{}"))
+                                parsed = json.loads(user_input)
+                                new_json_params = json.dumps(parsed)
                             except Exception as e:
-                                logging.error(f"Error parsing default JSON parameters: {e}")
-                                default_params = {}
-                            updated_params = {}
-                            if default_params:
-                                print("Define new parameters. Press Enter to keep current value.")
-                                for key, value in default_params.items():
-                                    user_val = input(f"Parameter '{key}' (default {value}): ")
-                                    if user_val.strip() == "":
-                                        updated_params[key] = value
-                                    else:
-                                        try:
-                                            if isinstance(value, int):
-                                                updated_params[key] = int(user_val)
-                                            elif isinstance(value, float):
-                                                updated_params[key] = float(user_val)
-                                            else:
-                                                updated_params[key] = user_val
-                                        except:
-                                            updated_params[key] = user_val
-                            else:
-                                # if no default parameters exist, allow a raw JSON input
-                                json_input = input("Enter JSON parameters for the rule (e.g., {\"key\": \"value\"}): ")
-                                try:
-                                    updated_params = json.loads(json_input) if json_input.strip() != "" else {}
-                                except Exception as e:
-                                    logging.error(f"Invalid JSON parameters: {e}")
-                                    updated_params = {}
+                                logging.error(f"Error parsing JSON parameters: {e}")
+                                return
 
-                        # Assign rule name, applied id, and updated jsonParams to marker and update marker_positions
-                        self.markers[self.selected_marker_id]['rule'] = matched_rule.get("name")
-                        self.markers[self.selected_marker_id]['jsonParams'] = updated_params
-                        for i, m in enumerate(self.mask_positions):
-                            if m.get('marker_id') == self.selected_marker_id:
-                                self.mask_positions[i]['rule'] = matched_rule.get("name")
-                                self.mask_positions[i]['jsonParams'] = updated_params
-                        logging.info(f"Assigned rule {matched_rule.get('name')} (id: {matched_rule.get('id')}) to marker {self.selected_marker_id} with parameters {updated_params}")
+                    new_rule_applied = {
+                        "id": applied_id,
+                        "marker_id": self.selected_marker_id,
+                        "json_params": new_json_params
+                    }
+                    if "rule_applied" in matched_rule:
+                        if any(applied.get("id") == applied_id for applied in matched_rule["rule_applied"]):
+                            logging.error(f"Applied rule with id {applied_id} already exists for rule {rule_id}.")
+                            return
+                        matched_rule["rule_applied"].append(new_rule_applied)
+                    else:
+                        matched_rule["rule_applied"] = [new_rule_applied]
 
-                        # Auto-increment the applied rule ID
-                        last_applied_id = 0
-                        if "ruleApplied" in matched_rule and matched_rule["ruleApplied"]:
-                            last_applied_id = max(entry.get("id", 0) for entry in matched_rule["ruleApplied"])
-                        new_applied_id = last_applied_id + 1
-
-                        # Create a new record for ruleApplied with the same rule id and updated jsonParams
-                        rule_entry = {
-                            "id": new_applied_id,
-                            "markerId": self.selected_marker_id,
-                            "jsonParams": json.dumps(updated_params)
-                        }
-                        if "ruleApplied" in matched_rule:
-                            matched_rule["ruleApplied"].append(rule_entry)
-                        else:
-                            matched_rule["ruleApplied"] = [rule_entry]
-
-                        # Write back the updated rule.json file
+                    try:
                         with open(rule_config_path, 'w') as f:
                             json.dump(rule_config, f, indent=4)
-                        logging.info(f"Added new ruleApplied record for rule id {matched_rule.get('id')} to rule.json")
-                    else:
-                        logging.error(f"No matching rule found with id {rule_id}.")
+                    except Exception as e:
+                        logging.error(f"Error saving rule.json: {e}")
+                        return
+
+                    logging.info(
+                        f"Applied rule id {rule_id} to marker {self.selected_marker_id} with applied rule id {applied_id}"
+                    )
+
+                    # Update the marker: store multiple applied rule ids in a list
+                    if self.selected_marker_id in self.markers:
+                        applied_ids = self.markers[self.selected_marker_id].get("applied_ids", [])
+                        if applied_id not in applied_ids:
+                            applied_ids.append(applied_id)
+                        self.markers[self.selected_marker_id]["applied_ids"] = applied_ids
+
                     self.save_mask_positions()
-                    logging.info(f"Assigned rule '{rule}' to marker {self.selected_marker_id}")
             self.draw_marker_ids(img)
             self.draw_instructions(img)
             self.draw_axes(img)
@@ -626,11 +646,11 @@ class MarkerZone:
                     # Iterate through rules and restore the rule entry where the rule name matches marker['rule']
                     for rule in rule_config.get("rules", []):
                         if rule.get("name", "").lower() == marker.get("rule", "").lower():
-                            if "ruleApplied" not in rule:
-                                rule["ruleApplied"] = []
+                            if "rule_applied" not in rule:
+                                rule["rule_applied"] = []
                             # Only add rule_entry if one with this markerId does not already exist
-                            if not any(entry.get("markerId") == marker.get("marker_id") for entry in rule["ruleApplied"]):
-                                rule["ruleApplied"].append(rule_entry)
+                            if not any(entry.get("markerId") == marker.get("marker_id") for entry in rule["rule_applied"]):
+                                rule["rule_applied"].append(rule_entry)
                     with open(rule_config_path, 'w') as f:
                         json.dump(rule_config, f, indent=4)
                     logging.info(f"Restored applied rule for marker_id {marker_id} in rule config.")
@@ -674,8 +694,8 @@ class MarkerZone:
                 with open(rule_config_path, 'r') as f:
                     rule_config = json.load(f)
                 for rule in rule_config.get('rules', []):
-                    if 'ruleApplied' in rule:
-                        rule['ruleApplied'] = [entry for entry in rule['ruleApplied'] if entry.get("markerId") != marker_id]
+                    if 'rule_applied' in rule:
+                        rule['rule_applied'] = [entry for entry in rule['rule_applied'] if entry.get("markerId") != marker_id]
                 with open(rule_config_path, 'w') as f:
                     json.dump(rule_config, f, indent=4)
                 logging.info(f"Deleted applied rules for marker_id {marker_id} from rule config on redo.")

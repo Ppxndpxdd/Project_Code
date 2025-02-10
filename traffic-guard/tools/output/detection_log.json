@@ -1,1 +1,291 @@
-[]
+[
+    {
+        "object_id": 2,
+        "class_id": 2,
+        "confidence": 0.9173489212989807,
+        "marker_id": 33,
+        "first_seen": 0.8,
+        "last_seen": 0.8,
+        "duration": null,
+        "event": "enter",
+        "bbox": [
+            0.41340524355570474,
+            0.4894508785671658,
+            0.20780630111694337,
+            0.21940689086914061
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 2,
+        "class_id": 2,
+        "confidence": 0.9173489212989807,
+        "marker_id": 33,
+        "first_seen": 0.8,
+        "last_seen": 0.8,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.00016177383975850209,
+            0.0003281748932575493,
+            0.00010708278252018822,
+            0.00025004072935002334
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 2,
+        "class_id": 2,
+        "confidence": 0.9423384070396423,
+        "marker_id": 33,
+        "first_seen": 0.8,
+        "last_seen": 4.733333333333333,
+        "duration": 3.9333333333333336,
+        "event": "exit",
+        "bbox": [
+            0.18084733343372741,
+            0.6725326114230685,
+            0.35810176817079387,
+            0.3971662450719763
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.7634426951408386,
+        "marker_id": 32,
+        "first_seen": 25.666666666666668,
+        "last_seen": 25.666666666666668,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.6818342526753743,
+            0.3092126069245515,
+            0.04055093129475911,
+            0.04177234790943287
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.7634426951408386,
+        "marker_id": 32,
+        "first_seen": 25.666666666666668,
+        "last_seen": 25.666666666666668,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.0001881211416588889,
+            0.00016249303464536312,
+            0.00033400172988573714,
+            0.0002476298694584432
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.7653703093528748,
+        "marker_id": 32,
+        "first_seen": 25.666666666666668,
+        "last_seen": 25.900000000000002,
+        "duration": null,
+        "event": "wrong_way",
+        "bbox": [
+            0.00018708123101128472,
+            0.00016196254186015397,
+            0.0003351042005750868,
+            0.0002552098272922762
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.6292504668235779,
+        "marker_id": 32,
+        "first_seen": 25.666666666666668,
+        "last_seen": 26.433333333333334,
+        "duration": 0.7666666666666657,
+        "event": "no_parking",
+        "bbox": [
+            0.0001871333767970403,
+            0.0001632918186475547,
+            0.0003315285676055485,
+            0.0002613164171760465
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 48,
+        "class_id": 2,
+        "confidence": 0.31827446818351746,
+        "marker_id": 32,
+        "first_seen": 33.266666666666666,
+        "last_seen": 33.266666666666666,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.5801527341206868,
+            0.3734000877097801,
+            0.09039007822672526,
+            0.10380384657118055
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 48,
+        "class_id": 2,
+        "confidence": 0.31827446818351746,
+        "marker_id": 32,
+        "first_seen": 33.266666666666666,
+        "last_seen": 33.266666666666666,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.00017462052404880522,
+            0.0002209277473522966,
+            0.0002550847166114383,
+            0.000249626149202407
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 49,
+        "class_id": 2,
+        "confidence": 0.30778968334198,
+        "marker_id": 32,
+        "first_seen": 33.36666666666667,
+        "last_seen": 33.36666666666667,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.5756966272989908,
+            0.3747796517831308,
+            0.09875768025716146,
+            0.10413942690248842
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 49,
+        "class_id": 2,
+        "confidence": 0.30778968334198,
+        "marker_id": 32,
+        "first_seen": 33.36666666666667,
+        "last_seen": 33.36666666666667,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.000175639142592748,
+            0.00022172179568778668,
+            0.00024840570158428615,
+            0.00025059280081540954
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 50,
+        "class_id": 5,
+        "confidence": 0.4343763291835785,
+        "marker_id": 32,
+        "first_seen": 33.53333333333333,
+        "last_seen": 33.53333333333333,
+        "duration": null,
+        "event": "enter_movement",
+        "bbox": [
+            0.5720541795094808,
+            0.3766746944851346,
+            0.0967466672261556,
+            0.10873376351815683
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 50,
+        "class_id": 5,
+        "confidence": 0.4343763291835785,
+        "marker_id": 32,
+        "first_seen": 33.53333333333333,
+        "last_seen": 33.53333333333333,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.00017416688717073863,
+            0.00022472613796448678,
+            0.00024755599598089856,
+            0.00024809345459905345
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.875586211681366,
+        "marker_id": 32,
+        "first_seen": 25.666666666666668,
+        "last_seen": 34.53333333333333,
+        "duration": 8.866666666666664,
+        "event": "exit_movement",
+        "bbox": [
+            0.5312859376271566,
+            0.4057875880488643,
+            0.12102327346801758,
+            0.1322050589102286
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.902864396572113,
+        "marker_id": 33,
+        "first_seen": 36.266666666666666,
+        "last_seen": 36.266666666666666,
+        "duration": null,
+        "event": "enter",
+        "bbox": [
+            0.41145065625508626,
+            0.49520515159324363,
+            0.2098045031229655,
+            0.21594334355107062
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.902864396572113,
+        "marker_id": 33,
+        "first_seen": 36.266666666666666,
+        "last_seen": 36.266666666666666,
+        "duration": null,
+        "event": "no_entry",
+        "bbox": [
+            0.00016178519775470097,
+            0.000329235414418664,
+            0.00010502403808964623,
+            0.00025857574818719724
+        ],
+        "id_rule_applied": null
+    },
+    {
+        "object_id": 20,
+        "class_id": 2,
+        "confidence": 0.9619332551956177,
+        "marker_id": 33,
+        "first_seen": 36.266666666666666,
+        "last_seen": 37.800000000000004,
+        "duration": 1.5333333333333385,
+        "event": "exit",
+        "bbox": [
+            0.1811686674753825,
+            0.6812688756872106,
+            0.362337334950765,
+            0.40128885904947914
+        ],
+        "id_rule_applied": null
+    }
+]

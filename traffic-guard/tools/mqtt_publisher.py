@@ -11,10 +11,10 @@ class MqttPublisher:
         self.config = config
         self.mqtt_handler = MqttHandler(config)
         # Get heartbeat and incident topics from config
-        self.incident_topic = f"{self.config.get('detection_topic')}"
-        self.heartbeat_topic = f"{self.config.get('heartbeat_topic')}"
-        self.uniqueId = config.get('uniqueId', 'default_id')
-        
+        self.unique_id = config.get('unique_id', 'default_id')
+        self.edge_device_id = config.get('edge_device_id', 'default_id') 
+        self.incident_topic = f"{self.config.get('detection_topic')}/{self.unique_id}"
+        self.heartbeat_topic =  f"{config.get('heartbeat_topic', 'keep_alive')}/{self.unique_id}" # Add unique_id to heartbeat topic
         # Start the heartbeat thread
         self.heartbeat_thread = threading.Thread(target=self.send_heartbeat, daemon=True)
         self.heartbeat_thread.start()
@@ -42,7 +42,7 @@ class MqttPublisher:
             return
 
         # Ensure id_rule_applied gets added if ruleApplied exists and is a non-empty list
-        rule_applied = payload.get("ruleApplied")
+        rule_applied = payload.get("rule_applied")
         if isinstance(rule_applied, list) and rule_applied:
             payload["id_rule_applied"] = rule_applied[0].get("id")
         else:
@@ -59,9 +59,11 @@ class MqttPublisher:
         """Sends a heartbeat message to the MQTT broker at regular intervals."""
         while True:
             try:
-                heartbeat_message = f"{self.uniqueId}"
+                # Use self.edge_device_id to get the current value
+                self.edge_device_id = self.config.get('edge_device_id', 'default_id')
+                heartbeat_message = f"{self.edge_device_id}"
                 # Generate the heartbeat topic dynamically
-                topic = self.get_heartbeat_topic()
+                topic = self.heartbeat_topic # Use the attribute directly
                 logging.info(f"Sending heartbeat to topic: {topic}")
                 self.mqtt_handler.publish(topic, json.dumps(heartbeat_message))
                 logging.info("Heartbeat sent successfully.")

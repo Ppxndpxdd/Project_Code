@@ -3,32 +3,49 @@
         {
             "id": 1,
             "name": "No Entry",
-            "markerType": "zone",
+            "marker_type": "zone",
             "status": "active",
-            "jsonParams": "{\"confidence\": 0.5}",
-            "ruleApplied": []
+            "json_params": "{\"confidence\": 0.5}",
+            "rule_applied": [
+                {
+                    "applied_id": 2,
+                    "marker_id": 32,
+                    "json_params": "{\"confidence\": 0.75}"
+                },
+                {
+                    "id": 2,
+                    "marker_id": 33,
+                    "json_params": "{\"confidence\": 0.2}"
+                }
+            ]
         },
         {
             "id": 2,
             "name": "No Parking",
-            "markerType": "zone",
+            "marker_type": "zone",
             "status": "active",
-            "jsonParams": "{\"duration\": 5.0}",
-            "ruleApplied": [
+            "json_params": "{\"duration\": 5.0}",
+            "rule_applied": [
                 {
-                    "id": 1,
-                    "markerId": 1,
-                    "jsonParams": "{\"duration\": 1.0}"
+                    "applied_id": 1,
+                    "marker_id": 32,
+                    "json_params": "{\"duration\": 0.75}"
                 }
             ]
         },
         {
             "id": 3,
             "name": "Wrong Way",
-            "markerType": "movement",
+            "marker_type": "movement",
             "status": "active",
-            "jsonParams": "{\"sub_rules\": \"opposite\", \"right\", \"left\"}",
-            "ruleApplied": []
+            "json_params": "{}",
+            "rule_applied": [
+                {
+                    "applied_id": 18,
+                    "marker_id": 32,
+                    "json_params": "{}"
+                }
+            ]
         }
     ]
 }

@@ -1,33 +1,35 @@
 [
     {
-        "marker_id": 1,
-        "type": "zone",
+        "marker_id": 32,
+        "type": "movement",
         "status": "activate",
-        "points": [
+        "line_points": [
             [
-                465,
-                624
+                1120,
+                417
             ],
             [
-                624,
-                566
-            ],
-            [
-                905,
-                584
-            ],
-            [
-                711,
-                711
-            ],
-            [
-                465,
-                624
+                1268,
+                352
             ]
         ],
-        "rule": "No Parking",
-        "jsonParams": {
-            "duration": 1.0
-        }
+        "polygon_points": [
+            [
+                1008,
+                430
+            ],
+            [
+                1131,
+                450
+            ],
+            [
+                1347,
+                339
+            ],
+            [
+                1317,
+                326
+            ]
+        ]
     }
 ]
